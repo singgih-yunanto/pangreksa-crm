@@ -30,7 +30,7 @@ env:
 jobs:
   deploy:
     environment: dev
-    runs-on: [self-hosted, builder]   # the build runner (separate from the dev server)
+    runs-on: [self-hosted, Linux]   # the build runner (separate from the dev server)
     steps:
       - name: Checkout
         uses: actions/checkout@v4
