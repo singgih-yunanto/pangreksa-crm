@@ -80,13 +80,12 @@ jobs:
             echo "SSH_TARGET=$SSH_USER@$SSH_HOST"
           } >> "$GITHUB_ENV"
 
-      # ── Deploy backend: ship jar + scripts, restart ──
+      # ── Deploy backend: ship jar, restart via pre-installed script ──
       - name: Deploy backend
         run: |
-          $SSH_BASE "$SSH_TARGET" "mkdir -p '$BE_DIR/logs' '$BIN_DIR'"
+          $SSH_BASE "$SSH_TARGET" "mkdir -p '$BE_DIR/logs'"
           rsync -az -e "$RSYNC_RSH" pangreksa-crm-be/target/crm-be-*.jar "$SSH_TARGET:$BE_DIR/app.jar"
-          rsync -az -e "$RSYNC_RSH" deploy/pangreksa-be.sh deploy/pangreksa-fe.sh "$SSH_TARGET:$BIN_DIR/"
-          $SSH_BASE "$SSH_TARGET" "chmod +x '$BIN_DIR'/*.sh && PANGREKSA_BE_DIR='$BE_DIR' PANGREKSA_BE_CONFIG='$BE_CONFIG' '$BIN_DIR/pangreksa-be.sh' restart"
+          $SSH_BASE "$SSH_TARGET" "PANGREKSA_BE_DIR='$BE_DIR' PANGREKSA_BE_CONFIG='$BE_CONFIG' '$BIN_DIR/pangreksa-be.sh' restart"
 
       # ── Deploy frontend: ship build output, install runtime deps ON the dev server
       #    (so native binaries match its platform), then restart the Next server ──
