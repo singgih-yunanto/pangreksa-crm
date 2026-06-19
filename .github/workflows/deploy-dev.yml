@@ -26,6 +26,9 @@ env:
   FE_DIR: /opt/pangreksa-crm/frontend
   BIN_DIR: /opt/pangreksa-crm/bin
   BE_CONFIG: /opt/pangreksa-crm/config/application.yaml
+  # SSH target — runner already has passwordless access; no key setup needed.
+  SSH_TARGET: ${{ vars.DEV_SSH_USER }}@${{ vars.DEV_SSH_HOST }}
+  SSH_PORT: ${{ vars.DEV_SSH_PORT || '22' }}
 
 jobs:
   deploy:
@@ -61,45 +64,26 @@ jobs:
           npm ci
           npm run build
 
-      # ── Open an SSH channel to the dev server ──
-      - name: Configure SSH to dev server
-        env:
-          SSH_KEY: ${{ secrets.DEV_SSH_KEY }}
-          SSH_HOST: ${{ secrets.DEV_SSH_HOST }}
-          SSH_USER: ${{ secrets.DEV_SSH_USER }}
-          SSH_PORT: ${{ vars.DEV_SSH_PORT }}
-        run: |
-          PORT="${SSH_PORT:-22}"
-          mkdir -p ~/.ssh && chmod 700 ~/.ssh
-          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -p "$PORT" "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
-          {
-            echo "SSH_BASE=ssh -i $HOME/.ssh/deploy_key -p $PORT"
-            echo "RSYNC_RSH=ssh -i $HOME/.ssh/deploy_key -p $PORT"
-            echo "SSH_TARGET=$SSH_USER@$SSH_HOST"
-          } >> "$GITHUB_ENV"
-
       # ── Deploy backend: ship jar, restart via pre-installed script ──
       - name: Deploy backend
         run: |
-          $SSH_BASE "$SSH_TARGET" "mkdir -p '$BE_DIR/logs'"
-          rsync -az -e "$RSYNC_RSH" pangreksa-crm-be/target/crm-be-*.jar "$SSH_TARGET:$BE_DIR/app.jar"
-          $SSH_BASE "$SSH_TARGET" "PANGREKSA_BE_DIR='$BE_DIR' PANGREKSA_BE_CONFIG='$BE_CONFIG' '$BIN_DIR/pangreksa-be.sh' restart"
+          ssh -p "$SSH_PORT" "$SSH_TARGET" "mkdir -p '$BE_DIR/logs'"
+          rsync -az -e "ssh -p $SSH_PORT" pangreksa-crm-be/target/crm-be-*.jar "$SSH_TARGET:$BE_DIR/app.jar"
+          ssh -p "$SSH_PORT" "$SSH_TARGET" "PANGREKSA_BE_DIR='$BE_DIR' PANGREKSA_BE_CONFIG='$BE_CONFIG' '$BIN_DIR/pangreksa-be.sh' restart"
 
       # ── Deploy frontend: ship build output, install runtime deps ON the dev server
       #    (so native binaries match its platform), then restart the Next server ──
       - name: Deploy frontend
         run: |
-          $SSH_BASE "$SSH_TARGET" "mkdir -p '$FE_DIR/.next' '$FE_DIR/public'"
-          rsync -az --delete -e "$RSYNC_RSH" --exclude 'cache' pangreksa-crm-fe/.next/ "$SSH_TARGET:$FE_DIR/.next/"
-          rsync -az -e "$RSYNC_RSH" pangreksa-crm-fe/package.json pangreksa-crm-fe/package-lock.json pangreksa-crm-fe/next.config.ts "$SSH_TARGET:$FE_DIR/"
+          ssh -p "$SSH_PORT" "$SSH_TARGET" "mkdir -p '$FE_DIR/.next' '$FE_DIR/public'"
+          rsync -az --delete -e "ssh -p $SSH_PORT" --exclude 'cache' pangreksa-crm-fe/.next/ "$SSH_TARGET:$FE_DIR/.next/"
+          rsync -az -e "ssh -p $SSH_PORT" pangreksa-crm-fe/package.json pangreksa-crm-fe/package-lock.json pangreksa-crm-fe/next.config.ts "$SSH_TARGET:$FE_DIR/"
           if [ -d pangreksa-crm-fe/public ]; then
-            rsync -az --delete -e "$RSYNC_RSH" pangreksa-crm-fe/public/ "$SSH_TARGET:$FE_DIR/public/"
+            rsync -az --delete -e "ssh -p $SSH_PORT" pangreksa-crm-fe/public/ "$SSH_TARGET:$FE_DIR/public/"
           fi
-          $SSH_BASE "$SSH_TARGET" "cd '$FE_DIR' && npm ci --omit=dev && PANGREKSA_FE_DIR='$FE_DIR' '$BIN_DIR/pangreksa-fe.sh' restart"
+          ssh -p "$SSH_PORT" "$SSH_TARGET" "cd '$FE_DIR' && npm ci --omit=dev && PANGREKSA_FE_DIR='$FE_DIR' '$BIN_DIR/pangreksa-fe.sh' restart"
 
       - name: Health check (on dev server)
         run: |
           sleep 5
-          $SSH_BASE "$SSH_TARGET" "curl -s -o /dev/null -w 'frontend HTTP %{http_code}\n' http://127.0.0.1:3000/login; curl -s -o /dev/null -w 'backend  HTTP %{http_code}\n' -X POST -H 'Content-Type: application/json' -d '{\"username\":\"x\",\"password\":\"x\"}' http://127.0.0.1:8080/api/auth/login"
+          ssh -p "$SSH_PORT" "$SSH_TARGET" "curl -s -o /dev/null -w 'frontend HTTP %{http_code}\n' http://127.0.0.1:3000/login; curl -s -o /dev/null -w 'backend  HTTP %{http_code}\n' -X POST -H 'Content-Type: application/json' -d '{\"username\":\"x\",\"password\":\"x\"}' http://127.0.0.1:8080/api/auth/login"
