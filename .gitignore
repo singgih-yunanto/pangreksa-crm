@@ -1,0 +1,57 @@
+# ───────────────────────────── Pangreksa CRM (monorepo) ─────────────────────────────
+# Per-app .gitignore files also exist in pangreksa-crm-fe / -be; this covers the repo root,
+# the legacy Vaadin prototype, and anything shared.
+
+# ── Dependencies ──
+node_modules/
+.pnp
+.pnp.*
+
+# ── Build output ──
+# Java / Maven / Gradle (backend + legacy Vaadin prototype)
+target/
+build/
+out/
+bin/
+*.class
+*.jar
+*.war
+!**/.mvn/wrapper/maven-wrapper.jar
+!**/gradle/wrapper/gradle-wrapper.jar
+
+# Next.js (frontend)
+.next/
+next-env.d.ts
+*.tsbuildinfo
+
+# ── Environment & secrets (NEVER commit; *.example templates are kept) ──
+.env
+.env.*
+!.env.example
+*.local
+deploy/**/application.yaml
+deploy/**/*.secret
+!deploy/**/*.example
+
+# ── Runtime artifacts ──
+*.pid
+*.log
+logs/
+coverage/
+
+# ── IDE / editor ──
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+*.swp
+
+# ── OS ──
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Misc ──
+*.pem
+.vercel

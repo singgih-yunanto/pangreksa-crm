@@ -1,0 +1,121 @@
+@import "tailwindcss";
+
+/* Enable class-based dark mode (toggle .dark on <html>) */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ============================ Pangreksa design tokens ============================ */
+:root {
+  /* Brand red ramp */
+  --red-50:#FBEEEE; --red-100:#F6D9D8; --red-200:#ECB2B0; --red-300:#DD8583; --red-400:#C85A57;
+  --red-500:#AF3931; --red-600:#962829; --red-700:#7C1F20; --red-800:#5E1718; --red-900:#401011;
+  /* Warm neutral ramp */
+  --neutral-0:#FFFFFF; --neutral-50:#FAF9F9; --neutral-100:#F4F2F1; --neutral-200:#E9E5E4;
+  --neutral-300:#D8D2D1; --neutral-400:#C3BBBA; --neutral-500:#A39B9A; --neutral-600:#837B7A;
+  --neutral-700:#615D5C; --neutral-800:#403C3C; --neutral-900:#272424; --neutral-950:#161413;
+  /* Status */
+  --green-50:#E9F4EE; --green-600:#1F6B43; --amber-50:#FBF1DF; --amber-600:#8C5E12;
+  --blue-50:#E8F0F9; --blue-600:#235488;
+
+  /* Semantic (light) */
+  --surface-page:var(--neutral-50); --surface-card:var(--neutral-0); --surface-sunken:var(--neutral-100);
+  --surface-hover:var(--neutral-100); --surface-active:var(--neutral-200); --surface-overlay:rgba(38,36,36,.45);
+  --text-primary:var(--neutral-900); --text-secondary:var(--neutral-700); --text-muted:var(--neutral-600);
+  --text-on-accent:var(--neutral-0); --text-link:var(--red-600);
+  --border-subtle:var(--neutral-200); --border-default:var(--neutral-300); --border-strong:var(--neutral-400);
+  --accent:var(--red-500); --accent-hover:var(--red-600); --accent-active:var(--red-700);
+  --accent-soft:var(--red-50); --accent-soft-fg:var(--red-600); --focus-ring:var(--red-500);
+  --success:var(--green-600); --success-soft:var(--green-50); --warning:var(--amber-600);
+  --warning-soft:var(--amber-50); --info:var(--blue-600); --info-soft:var(--blue-50);
+  --danger:var(--red-600); --danger-soft:var(--red-50);
+
+  /* Shadows (warm) */
+  --shadow-sm:0 1px 2px rgba(38,36,36,.05),0 1px 3px rgba(38,36,36,.07);
+  --shadow-md:0 2px 4px rgba(38,36,36,.05),0 6px 16px rgba(38,36,36,.08);
+  --shadow-lg:0 4px 8px rgba(38,36,36,.06),0 16px 36px rgba(38,36,36,.12);
+  --shadow-xl:0 12px 24px rgba(38,36,36,.10),0 32px 64px rgba(38,36,36,.16);
+}
+
+.dark {
+  --surface-page:var(--neutral-950); --surface-card:#1E1B1B; --surface-sunken:#161413;
+  --surface-hover:rgba(255,255,255,.05); --surface-active:rgba(255,255,255,.09); --surface-overlay:rgba(0,0,0,.6);
+  --text-primary:#F6F3F2; --text-secondary:#C9C2C1; --text-muted:#9C9493; --text-on-accent:#fff; --text-link:#E08A86;
+  --border-subtle:rgba(255,255,255,.08); --border-default:rgba(255,255,255,.13); --border-strong:rgba(255,255,255,.22);
+  --accent:var(--red-400); --accent-hover:#D56F6C; --accent-active:#E08A86; --accent-soft:rgba(200,90,87,.16);
+  --accent-soft-fg:#E59995; --focus-ring:var(--red-400);
+  --success:#4FB07A; --success-soft:rgba(79,176,122,.16); --warning:#D6982F; --warning-soft:rgba(214,152,47,.16);
+  --info:#5C97D6; --info-soft:rgba(92,151,214,.16); --danger:#E08A86; --danger-soft:rgba(200,90,87,.16);
+  --shadow-sm:0 1px 2px rgba(0,0,0,.4),0 1px 3px rgba(0,0,0,.5);
+  --shadow-md:0 2px 6px rgba(0,0,0,.45),0 8px 20px rgba(0,0,0,.5);
+  --shadow-lg:0 6px 14px rgba(0,0,0,.5),0 20px 44px rgba(0,0,0,.55);
+  --shadow-xl:0 16px 32px rgba(0,0,0,.55),0 40px 72px rgba(0,0,0,.6);
+}
+
+/* ============================ Tailwind theme mapping ============================ */
+@theme inline {
+  --color-page:var(--surface-page);
+  --color-card:var(--surface-card);
+  --color-sunken:var(--surface-sunken);
+  --color-hover:var(--surface-hover);
+  --color-active:var(--surface-active);
+  --color-fg:var(--text-primary);
+  --color-secondary:var(--text-secondary);
+  --color-muted:var(--text-muted);
+  --color-on-accent:var(--text-on-accent);
+  --color-link:var(--text-link);
+  --color-subtle:var(--border-subtle);
+  --color-line:var(--border-default);
+  --color-strong:var(--border-strong);
+  --color-accent:var(--accent);
+  --color-accent-hover:var(--accent-hover);
+  --color-accent-active:var(--accent-active);
+  --color-accent-soft:var(--accent-soft);
+  --color-accent-soft-fg:var(--accent-soft-fg);
+  --color-success:var(--success); --color-success-soft:var(--success-soft);
+  --color-warning:var(--warning); --color-warning-soft:var(--warning-soft);
+  --color-info:var(--info); --color-info-soft:var(--info-soft);
+  --color-danger:var(--danger); --color-danger-soft:var(--danger-soft);
+
+  --font-sans:var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --font-mono:var(--font-geist-mono), ui-monospace, monospace;
+  --font-display:var(--font-bricolage), var(--font-geist), system-ui, sans-serif;
+
+  --radius-ctl:8px; --radius-card:12px; --radius-xl:16px;
+
+  --shadow-card:var(--shadow-sm);
+  --shadow-pop:var(--shadow-md);
+  --shadow-float:var(--shadow-lg);
+  --shadow-overlay:var(--shadow-xl);
+}
+
+/* ============================ Base layer ============================ */
+@layer base {
+  * { border-color: var(--border-subtle); }
+  body {
+    background: var(--surface-page);
+    color: var(--text-primary);
+    font-family: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+    font-size: 14px; line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: "cv11","ss01";
+  }
+  h1,h2,h3,h4,h5,h6 {
+    font-family: var(--font-bricolage), var(--font-geist), system-ui, sans-serif;
+    font-weight: 600; line-height: 1.2; letter-spacing: -0.01em; text-wrap: balance;
+  }
+  a { color: var(--text-link); text-decoration: none; }
+  :where(a,button,input,select,textarea,[tabindex]):focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus-ring) 32%, transparent);
+    border-radius: 6px;
+  }
+  ::selection { background: var(--accent-soft); color: var(--accent-soft-fg); }
+  *{ scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+  *::-webkit-scrollbar{ width:10px; height:10px; }
+  *::-webkit-scrollbar-thumb{ background:var(--border-strong); border-radius:999px; border:3px solid transparent; background-clip:content-box; }
+}
+
+@layer utilities {
+  .eyebrow { font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--text-muted); }
+  .tabular { font-family:var(--font-geist-mono), ui-monospace, monospace; font-variant-numeric:tabular-nums; letter-spacing:0; }
+  .card { background:var(--surface-card); border:1px solid var(--border-subtle); border-radius:12px; box-shadow:var(--shadow-sm); }
+}

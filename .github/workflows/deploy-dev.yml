@@ -1,0 +1,106 @@
+name: Deploy (dev)
+
+# Two machines:
+#   • RUNNER (self-hosted "builder")  — checks out, builds both apps. Holds the
+#     frontend build-time .env (NEXT_PUBLIC_* are baked in here, at build time).
+#   • DEV SERVER (separate host)      — runs the backend jar + Next.js server behind
+#     nginx. Holds the backend's external application.yaml. Reached over SSH.
+#
+# The runner pushes artifacts to the dev server with rsync-over-SSH and restarts the
+# services there via the control scripts. See deploy/README.md for one-time setup.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: false
+
+env:
+  # Path on the RUNNER machine holding the frontend build-time env (not in the repo).
+  FE_ENV_FILE: /opt/pangreksa-crm/config/frontend.env
+  # Target paths on the DEV SERVER.
+  BE_DIR: /opt/pangreksa-crm/backend
+  FE_DIR: /opt/pangreksa-crm/frontend
+  BIN_DIR: /opt/pangreksa-crm/bin
+  BE_CONFIG: /opt/pangreksa-crm/config/application.yaml
+
+jobs:
+  deploy:
+    environment: dev
+    runs-on: [self-hosted, builder]   # the build runner (separate from the dev server)
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # ── Build backend (jar) ──
+      - name: Build backend
+        working-directory: pangreksa-crm-be
+        run: |
+          chmod +x mvnw
+          ./mvnw -B -ntp -DskipTests clean package
+
+      # ── Build frontend (NEXT_PUBLIC_* baked from the runner's env file) ──
+      - name: Build frontend
+        working-directory: pangreksa-crm-fe
+        run: |
+          cp "$FE_ENV_FILE" .env.production
+          npm ci
+          npm run build
+
+      # ── Open an SSH channel to the dev server ──
+      - name: Configure SSH to dev server
+        env:
+          SSH_KEY: ${{ secrets.DEV_SSH_KEY }}
+          SSH_HOST: ${{ secrets.DEV_SSH_HOST }}
+          SSH_USER: ${{ secrets.DEV_SSH_USER }}
+          SSH_PORT: ${{ vars.DEV_SSH_PORT }}
+        run: |
+          PORT="${SSH_PORT:-22}"
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p "$PORT" "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+          {
+            echo "SSH_BASE=ssh -i $HOME/.ssh/deploy_key -p $PORT"
+            echo "RSYNC_RSH=ssh -i $HOME/.ssh/deploy_key -p $PORT"
+            echo "SSH_TARGET=$SSH_USER@$SSH_HOST"
+          } >> "$GITHUB_ENV"
+
+      # ── Deploy backend: ship jar + scripts, restart ──
+      - name: Deploy backend
+        run: |
+          $SSH_BASE "$SSH_TARGET" "mkdir -p '$BE_DIR/logs' '$BIN_DIR'"
+          rsync -az -e "$RSYNC_RSH" pangreksa-crm-be/target/crm-be-*.jar "$SSH_TARGET:$BE_DIR/app.jar"
+          rsync -az -e "$RSYNC_RSH" deploy/pangreksa-be.sh deploy/pangreksa-fe.sh "$SSH_TARGET:$BIN_DIR/"
+          $SSH_BASE "$SSH_TARGET" "chmod +x '$BIN_DIR'/*.sh && PANGREKSA_BE_DIR='$BE_DIR' PANGREKSA_BE_CONFIG='$BE_CONFIG' '$BIN_DIR/pangreksa-be.sh' restart"
+
+      # ── Deploy frontend: ship build output, install runtime deps ON the dev server
+      #    (so native binaries match its platform), then restart the Next server ──
+      - name: Deploy frontend
+        run: |
+          $SSH_BASE "$SSH_TARGET" "mkdir -p '$FE_DIR/.next' '$FE_DIR/public'"
+          rsync -az --delete -e "$RSYNC_RSH" --exclude 'cache' pangreksa-crm-fe/.next/ "$SSH_TARGET:$FE_DIR/.next/"
+          rsync -az -e "$RSYNC_RSH" pangreksa-crm-fe/package.json pangreksa-crm-fe/package-lock.json pangreksa-crm-fe/next.config.ts "$SSH_TARGET:$FE_DIR/"
+          if [ -d pangreksa-crm-fe/public ]; then
+            rsync -az --delete -e "$RSYNC_RSH" pangreksa-crm-fe/public/ "$SSH_TARGET:$FE_DIR/public/"
+          fi
+          $SSH_BASE "$SSH_TARGET" "cd '$FE_DIR' && npm ci --omit=dev && PANGREKSA_FE_DIR='$FE_DIR' '$BIN_DIR/pangreksa-fe.sh' restart"
+
+      - name: Health check (on dev server)
+        run: |
+          sleep 5
+          $SSH_BASE "$SSH_TARGET" "curl -s -o /dev/null -w 'frontend HTTP %{http_code}\n' http://127.0.0.1:3000/login; curl -s -o /dev/null -w 'backend  HTTP %{http_code}\n' -X POST -H 'Content-Type: application/json' -d '{\"username\":\"x\",\"password\":\"x\"}' http://127.0.0.1:8080/api/auth/login"

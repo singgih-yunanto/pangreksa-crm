@@ -1,0 +1,248 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-configuration
+      author: pangreksa
+      changes:
+        - createTable:
+            tableName: configuration
+            columns:
+              - column: { name: id, type: bigint, autoIncrement: true, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: created_at, type: timestamp, constraints: { nullable: false } }
+              - column: { name: updated_at, type: timestamp, constraints: { nullable: false } }
+              - column: { name: config_key, type: varchar(255), constraints: { nullable: false, unique: true } }
+              - column: { name: config_value, type: varchar(1000) }
+              - column: { name: label, type: varchar(255) }
+              - column: { name: extra, type: jsonb }
+
+  - changeSet:
+      id: 002-create-lookups
+      author: pangreksa
+      changes:
+        - createTable:
+            tableName: lookups
+            columns:
+              - column: { name: id, type: bigint, autoIncrement: true, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: created_at, type: timestamp, constraints: { nullable: false } }
+              - column: { name: updated_at, type: timestamp, constraints: { nullable: false } }
+              - column: { name: category, type: varchar(255), constraints: { nullable: false } }
+              - column: { name: code, type: varchar(255), constraints: { nullable: false } }
+              - column: { name: label, type: varchar(255), constraints: { nullable: false } }
+              - column: { name: sort_order, type: int, constraints: { nullable: false } }
+              - column: { name: active, type: boolean, constraints: { nullable: false } }
+              - column: { name: extra, type: jsonb }
+        - addUniqueConstraint: { tableName: lookups, columnNames: "category, code", constraintName: uq_lookup_cat_code }
+
+  - changeSet:
+      id: 003-create-roles
+      author: pangreksa
+      changes:
+        - createTable:
+            tableName: roles
+            columns:
+              - column: { name: id, type: bigint, autoIncrement: true, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: created_at, type: timestamp, constraints: { nullable: false } }
+              - column: { name: updated_at, type: timestamp, constraints: { nullable: false } }
+              - column: { name: name, type: varchar(255), constraints: { nullable: false, unique: true } }
+              - column: { name: description, type: varchar(500) }
+              - column: { name: parent_role_id, type: bigint }
+        - addForeignKeyConstraint: { constraintName: fk_roles_parent, baseTableName: roles, baseColumnNames: parent_role_id, referencedTableName: roles, referencedColumnNames: id }
+        - createTable:
+            tableName: role_permissions
+            columns:
+              - column: { name: role_id, type: bigint, constraints: { nullable: false } }
+              - column: { name: permission, type: varchar(255), constraints: { nullable: false } }
+        - addForeignKeyConstraint: { constraintName: fk_role_permissions_role, baseTableName: role_permissions, baseColumnNames: role_id, referencedTableName: roles, referencedColumnNames: id }
+
+  - changeSet:
+      id: 004-create-users
+      author: pangreksa
+      changes:
+        - createTable:
+            tableName: users
+            columns:
+              - column: { name: id, type: bigint, autoIncrement: true, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: created_at, type: timestamp, constraints: { nullable: false } }
+              - column: { name: updated_at, type: timestamp, constraints: { nullable: false } }
+              - column: { name: username, type: varchar(255), constraints: { nullable: false, unique: true } }
+              - column: { name: full_name, type: varchar(255), constraints: { nullable: false } }
+              - column: { name: email, type: varchar(255) }
+              - column: { name: password_hash, type: varchar(255), constraints: { nullable: false } }
+              - column: { name: active, type: boolean, constraints: { nullable: false } }
+              - column: { name: role_id, type: bigint }
+        - addForeignKeyConstraint: { constraintName: fk_users_role, baseTableName: users, baseColumnNames: role_id, referencedTableName: roles, referencedColumnNames: id }
+
+  - changeSet:
+      id: 005-create-accounts
+      author: pangreksa
+      changes:
+        - createTable:
+            tableName: accounts
+            columns:
+              - column: { name: id, type: bigint, autoIncrement: true, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: created_at, type: timestamp, constraints: { nullable: false } }
+              - column: { name: updated_at, type: timestamp, constraints: { nullable: false } }
+              - column: { name: owner_id, type: bigint }
+              - column: { name: tag, type: varchar(255) }
+              - column: { name: locked, type: boolean, constraints: { nullable: false } }
+              - column: { name: custom_fields, type: jsonb }
+              - column: { name: name, type: varchar(255), constraints: { nullable: false } }
+              - column: { name: account_number, type: bigint }
+              - column: { name: account_site, type: varchar(255) }
+              - column: { name: phone, type: varchar(255) }
+              - column: { name: fax, type: varchar(255) }
+              - column: { name: website, type: varchar(255) }
+              - column: { name: ticker_symbol, type: varchar(255) }
+              - column: { name: account_type_id, type: bigint }
+              - column: { name: ownership_id, type: bigint }
+              - column: { name: industry_id, type: bigint }
+              - column: { name: rating_id, type: bigint }
+              - column: { name: employees, type: int }
+              - column: { name: annual_revenue, type: "numeric(16, 2)" }
+              - column: { name: sic_code, type: int }
+              - column: { name: parent_account_id, type: bigint }
+              - column: { name: billing_street, type: varchar(255) }
+              - column: { name: billing_city, type: varchar(255) }
+              - column: { name: billing_state, type: varchar(255) }
+              - column: { name: billing_country, type: varchar(255) }
+              - column: { name: billing_code, type: varchar(255) }
+              - column: { name: shipping_street, type: varchar(255) }
+              - column: { name: shipping_city, type: varchar(255) }
+              - column: { name: shipping_state, type: varchar(255) }
+              - column: { name: shipping_country, type: varchar(255) }
+              - column: { name: shipping_code, type: varchar(255) }
+              - column: { name: description, type: text }
+        - addForeignKeyConstraint: { constraintName: fk_accounts_owner, baseTableName: accounts, baseColumnNames: owner_id, referencedTableName: users, referencedColumnNames: id }
+        - addForeignKeyConstraint: { constraintName: fk_accounts_parent, baseTableName: accounts, baseColumnNames: parent_account_id, referencedTableName: accounts, referencedColumnNames: id }
+        - addForeignKeyConstraint: { constraintName: fk_accounts_type, baseTableName: accounts, baseColumnNames: account_type_id, referencedTableName: lookups, referencedColumnNames: id }
+        - addForeignKeyConstraint: { constraintName: fk_accounts_ownership, baseTableName: accounts, baseColumnNames: ownership_id, referencedTableName: lookups, referencedColumnNames: id }
+        - addForeignKeyConstraint: { constraintName: fk_accounts_industry, baseTableName: accounts, baseColumnNames: industry_id, referencedTableName: lookups, referencedColumnNames: id }
+        - addForeignKeyConstraint: { constraintName: fk_accounts_rating, baseTableName: accounts, baseColumnNames: rating_id, referencedTableName: lookups, referencedColumnNames: id }
+
+  - changeSet:
+      id: 006-create-contacts
+      author: pangreksa
+      changes:
+        - createTable:
+            tableName: contacts
+            columns:
+              - column: { name: id, type: bigint, autoIncrement: true, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: created_at, type: timestamp, constraints: { nullable: false } }
+              - column: { name: updated_at, type: timestamp, constraints: { nullable: false } }
+              - column: { name: owner_id, type: bigint }
+              - column: { name: tag, type: varchar(255) }
+              - column: { name: locked, type: boolean, constraints: { nullable: false } }
+              - column: { name: custom_fields, type: jsonb }
+              - column: { name: first_name, type: varchar(255) }
+              - column: { name: last_name, type: varchar(255), constraints: { nullable: false } }
+              - column: { name: account_id, type: bigint }
+              - column: { name: title, type: varchar(255) }
+              - column: { name: department, type: varchar(255) }
+              - column: { name: email, type: varchar(255) }
+              - column: { name: secondary_email, type: varchar(255) }
+              - column: { name: phone, type: varchar(255) }
+              - column: { name: mobile, type: varchar(255) }
+              - column: { name: home_phone, type: varchar(255) }
+              - column: { name: other_phone, type: varchar(255) }
+              - column: { name: fax, type: varchar(255) }
+              - column: { name: date_of_birth, type: date }
+              - column: { name: assistant, type: varchar(255) }
+              - column: { name: lead_source_id, type: bigint }
+              - column: { name: reporting_to_id, type: bigint }
+              - column: { name: mailing_street, type: varchar(255) }
+              - column: { name: mailing_city, type: varchar(255) }
+              - column: { name: mailing_state, type: varchar(255) }
+              - column: { name: mailing_country, type: varchar(255) }
+              - column: { name: mailing_code, type: varchar(255) }
+              - column: { name: other_street, type: varchar(255) }
+              - column: { name: other_city, type: varchar(255) }
+              - column: { name: other_state, type: varchar(255) }
+              - column: { name: other_country, type: varchar(255) }
+              - column: { name: other_code, type: varchar(255) }
+              - column: { name: email_opt_out, type: boolean, constraints: { nullable: false } }
+              - column: { name: description, type: text }
+        - addForeignKeyConstraint: { constraintName: fk_contacts_owner, baseTableName: contacts, baseColumnNames: owner_id, referencedTableName: users, referencedColumnNames: id }
+        - addForeignKeyConstraint: { constraintName: fk_contacts_account, baseTableName: contacts, baseColumnNames: account_id, referencedTableName: accounts, referencedColumnNames: id }
+        - addForeignKeyConstraint: { constraintName: fk_contacts_reporting_to, baseTableName: contacts, baseColumnNames: reporting_to_id, referencedTableName: contacts, referencedColumnNames: id }
+        - addForeignKeyConstraint: { constraintName: fk_contacts_lead_source, baseTableName: contacts, baseColumnNames: lead_source_id, referencedTableName: lookups, referencedColumnNames: id }
+
+  - changeSet:
+      id: 007-create-leads
+      author: pangreksa
+      changes:
+        - createTable:
+            tableName: leads
+            columns:
+              - column: { name: id, type: bigint, autoIncrement: true, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: created_at, type: timestamp, constraints: { nullable: false } }
+              - column: { name: updated_at, type: timestamp, constraints: { nullable: false } }
+              - column: { name: owner_id, type: bigint }
+              - column: { name: tag, type: varchar(255) }
+              - column: { name: locked, type: boolean, constraints: { nullable: false } }
+              - column: { name: custom_fields, type: jsonb }
+              - column: { name: first_name, type: varchar(255) }
+              - column: { name: last_name, type: varchar(255), constraints: { nullable: false } }
+              - column: { name: company, type: varchar(255) }
+              - column: { name: title, type: varchar(255) }
+              - column: { name: salutation_id, type: bigint }
+              - column: { name: email, type: varchar(255) }
+              - column: { name: secondary_email, type: varchar(255) }
+              - column: { name: phone, type: varchar(255) }
+              - column: { name: mobile, type: varchar(255) }
+              - column: { name: fax, type: varchar(255) }
+              - column: { name: website, type: varchar(255) }
+              - column: { name: lead_source_id, type: bigint }
+              - column: { name: lead_status_id, type: bigint }
+              - column: { name: industry_id, type: bigint }
+              - column: { name: rating_id, type: bigint }
+              - column: { name: no_of_employees, type: int }
+              - column: { name: annual_revenue, type: "numeric(16, 2)" }
+              - column: { name: email_opt_out, type: boolean, constraints: { nullable: false } }
+              - column: { name: skype_id, type: varchar(255) }
+              - column: { name: twitter, type: varchar(255) }
+              - column: { name: street, type: varchar(255) }
+              - column: { name: city, type: varchar(255) }
+              - column: { name: state, type: varchar(255) }
+              - column: { name: country, type: varchar(255) }
+              - column: { name: zip_code, type: varchar(255) }
+              - column: { name: description, type: text }
+        - addForeignKeyConstraint: { constraintName: fk_leads_owner, baseTableName: leads, baseColumnNames: owner_id, referencedTableName: users, referencedColumnNames: id }
+        - addForeignKeyConstraint: { constraintName: fk_leads_salutation, baseTableName: leads, baseColumnNames: salutation_id, referencedTableName: lookups, referencedColumnNames: id }
+        - addForeignKeyConstraint: { constraintName: fk_leads_lead_source, baseTableName: leads, baseColumnNames: lead_source_id, referencedTableName: lookups, referencedColumnNames: id }
+        - addForeignKeyConstraint: { constraintName: fk_leads_lead_status, baseTableName: leads, baseColumnNames: lead_status_id, referencedTableName: lookups, referencedColumnNames: id }
+        - addForeignKeyConstraint: { constraintName: fk_leads_industry, baseTableName: leads, baseColumnNames: industry_id, referencedTableName: lookups, referencedColumnNames: id }
+        - addForeignKeyConstraint: { constraintName: fk_leads_rating, baseTableName: leads, baseColumnNames: rating_id, referencedTableName: lookups, referencedColumnNames: id }
+
+  - changeSet:
+      id: 008-create-deals
+      author: pangreksa
+      changes:
+        - createTable:
+            tableName: deals
+            columns:
+              - column: { name: id, type: bigint, autoIncrement: true, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: created_at, type: timestamp, constraints: { nullable: false } }
+              - column: { name: updated_at, type: timestamp, constraints: { nullable: false } }
+              - column: { name: owner_id, type: bigint }
+              - column: { name: tag, type: varchar(255) }
+              - column: { name: locked, type: boolean, constraints: { nullable: false } }
+              - column: { name: custom_fields, type: jsonb }
+              - column: { name: name, type: varchar(255), constraints: { nullable: false } }
+              - column: { name: stage_id, type: bigint }
+              - column: { name: amount, type: "numeric(16, 2)" }
+              - column: { name: closing_date, type: date }
+              - column: { name: account_id, type: bigint }
+              - column: { name: contact_id, type: bigint }
+              - column: { name: type_id, type: bigint }
+              - column: { name: probability, type: int }
+              - column: { name: expected_revenue, type: "numeric(16, 2)" }
+              - column: { name: next_step, type: varchar(255) }
+              - column: { name: lead_source_id, type: bigint }
+              - column: { name: reason_for_loss_id, type: bigint }
+              - column: { name: description, type: text }
+        - addForeignKeyConstraint: { constraintName: fk_deals_owner, baseTableName: deals, baseColumnNames: owner_id, referencedTableName: users, referencedColumnNames: id }
+        - addForeignKeyConstraint: { constraintName: fk_deals_account, baseTableName: deals, baseColumnNames: account_id, referencedTableName: accounts, referencedColumnNames: id }
+        - addForeignKeyConstraint: { constraintName: fk_deals_contact, baseTableName: deals, baseColumnNames: contact_id, referencedTableName: contacts, referencedColumnNames: id }
+        - addForeignKeyConstraint: { constraintName: fk_deals_stage, baseTableName: deals, baseColumnNames: stage_id, referencedTableName: lookups, referencedColumnNames: id }
+        - addForeignKeyConstraint: { constraintName: fk_deals_type, baseTableName: deals, baseColumnNames: type_id, referencedTableName: lookups, referencedColumnNames: id }
+        - addForeignKeyConstraint: { constraintName: fk_deals_lead_source, baseTableName: deals, baseColumnNames: lead_source_id, referencedTableName: lookups, referencedColumnNames: id }
+        - addForeignKeyConstraint: { constraintName: fk_deals_reason_for_loss, baseTableName: deals, baseColumnNames: reason_for_loss_id, referencedTableName: lookups, referencedColumnNames: id }

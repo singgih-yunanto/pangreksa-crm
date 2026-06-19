@@ -1,0 +1,31 @@
+spring:
+  application:
+    name: pangreksa-crm-be
+  datasource:
+    url: jdbc:postgresql://localhost:5432/pangreksa_crm
+    username: pangreksa
+    password: pangreksa
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+
+server:
+  port: 8080
+
+pangreksa:
+  cors:
+    allowed-origins: "http://localhost:3000"
+  jwt:
+    secret: "pangreksa-crm-dev-secret-change-me-please-32bytes-minimum-0123456789"
+    expiry-hours: 12
+
+logging:
+  level:
+    org.hibernate.SQL: warn
