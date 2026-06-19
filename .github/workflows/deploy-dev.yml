@@ -29,7 +29,6 @@ env:
   # SSH target — runner already has passwordless access; no key setup needed.
   SSH_TARGET: ${{ vars.DEV_SSH_USER }}@${{ vars.DEV_SSH_HOST }}
   SSH_PORT: ${{ vars.DEV_SSH_PORT || '22' }}
-  SSH_OPTS: -o StrictHostKeyChecking=no -o BatchMode=yes
 
 jobs:
   deploy:
@@ -65,26 +64,33 @@ jobs:
           npm ci
           npm run build
 
+      # ── Ensure SSH config accepts the dev server without interactive prompts ──
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf 'Host *\n  StrictHostKeyChecking no\n  BatchMode yes\n' >> ~/.ssh/config
+          chmod 600 ~/.ssh/config
+
       # ── Deploy backend: ship jar, restart via pre-installed script ──
       - name: Deploy backend
         run: |
-          ssh $SSH_OPTS -p "$SSH_PORT" "$SSH_TARGET" "mkdir -p '$BE_DIR/logs'"
-          rsync -az -e "ssh $SSH_OPTS -p $SSH_PORT" pangreksa-crm-be/target/crm-be-*.jar "$SSH_TARGET:$BE_DIR/app.jar"
-          ssh $SSH_OPTS -p "$SSH_PORT" "$SSH_TARGET" "PANGREKSA_BE_DIR='$BE_DIR' PANGREKSA_BE_CONFIG='$BE_CONFIG' '$BIN_DIR/pangreksa-be.sh' restart"
+          ssh -p "$SSH_PORT" "$SSH_TARGET" "mkdir -p '$BE_DIR/logs'"
+          rsync -az -e "ssh -p $SSH_PORT" pangreksa-crm-be/target/crm-be-*.jar "$SSH_TARGET:$BE_DIR/app.jar"
+          ssh -p "$SSH_PORT" "$SSH_TARGET" "PANGREKSA_BE_DIR='$BE_DIR' PANGREKSA_BE_CONFIG='$BE_CONFIG' '$BIN_DIR/pangreksa-be.sh' restart"
 
       # ── Deploy frontend: ship build output, install runtime deps ON the dev server
       #    (so native binaries match its platform), then restart the Next server ──
       - name: Deploy frontend
         run: |
-          ssh $SSH_OPTS -p "$SSH_PORT" "$SSH_TARGET" "mkdir -p '$FE_DIR/.next' '$FE_DIR/public'"
-          rsync -az --delete -e "ssh $SSH_OPTS -p $SSH_PORT" --exclude 'cache' pangreksa-crm-fe/.next/ "$SSH_TARGET:$FE_DIR/.next/"
-          rsync -az -e "ssh $SSH_OPTS -p $SSH_PORT" pangreksa-crm-fe/package.json pangreksa-crm-fe/package-lock.json pangreksa-crm-fe/next.config.ts "$SSH_TARGET:$FE_DIR/"
+          ssh -p "$SSH_PORT" "$SSH_TARGET" "mkdir -p '$FE_DIR/.next' '$FE_DIR/public'"
+          rsync -az --delete -e "ssh -p $SSH_PORT" --exclude 'cache' pangreksa-crm-fe/.next/ "$SSH_TARGET:$FE_DIR/.next/"
+          rsync -az -e "ssh -p $SSH_PORT" pangreksa-crm-fe/package.json pangreksa-crm-fe/package-lock.json pangreksa-crm-fe/next.config.ts "$SSH_TARGET:$FE_DIR/"
           if [ -d pangreksa-crm-fe/public ]; then
-            rsync -az --delete -e "ssh $SSH_OPTS -p $SSH_PORT" pangreksa-crm-fe/public/ "$SSH_TARGET:$FE_DIR/public/"
+            rsync -az --delete -e "ssh -p $SSH_PORT" pangreksa-crm-fe/public/ "$SSH_TARGET:$FE_DIR/public/"
           fi
-          ssh $SSH_OPTS -p "$SSH_PORT" "$SSH_TARGET" "cd '$FE_DIR' && npm ci --omit=dev && PANGREKSA_FE_DIR='$FE_DIR' '$BIN_DIR/pangreksa-fe.sh' restart"
+          ssh -p "$SSH_PORT" "$SSH_TARGET" "cd '$FE_DIR' && npm ci --omit=dev && PANGREKSA_FE_DIR='$FE_DIR' '$BIN_DIR/pangreksa-fe.sh' restart"
 
       - name: Health check (on dev server)
         run: |
           sleep 5
-          ssh $SSH_OPTS -p "$SSH_PORT" "$SSH_TARGET" "curl -s -o /dev/null -w 'frontend HTTP %{http_code}\n' http://127.0.0.1:3000/login; curl -s -o /dev/null -w 'backend  HTTP %{http_code}\n' -X POST -H 'Content-Type: application/json' -d '{\"username\":\"x\",\"password\":\"x\"}' http://127.0.0.1:8080/api/auth/login"
+          ssh -p "$SSH_PORT" "$SSH_TARGET" "curl -s -o /dev/null -w 'frontend HTTP %{http_code}\n' http://127.0.0.1:3000/login; curl -s -o /dev/null -w 'backend  HTTP %{http_code}\n' -X POST -H 'Content-Type: application/json' -d '{\"username\":\"x\",\"password\":\"x\"}' http://127.0.0.1:8080/api/auth/login"
