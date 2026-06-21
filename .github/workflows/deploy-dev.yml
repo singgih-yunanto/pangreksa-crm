@@ -81,7 +81,7 @@ jobs:
           if [ -d pangreksa-crm-fe/public ]; then
             rsync -az --delete -e "ssh -p $SSH_PORT" pangreksa-crm-fe/public/ "$SSH_TARGET:$FE_DIR/public/"
           fi
-          ssh -p "$SSH_PORT" "$SSH_TARGET" "bash -lc 'cd $FE_DIR && npm ci --omit=dev && PANGREKSA_FE_DIR=$FE_DIR $BIN_DIR/pangreksa-fe.sh restart'"
+          ssh -p "$SSH_PORT" "$SSH_TARGET" ". \$HOME/.nvm/nvm.sh && cd '$FE_DIR' && npm ci --omit=dev && PANGREKSA_FE_DIR='$FE_DIR' '$BIN_DIR/pangreksa-fe.sh' restart"
 
       - name: Health check (on dev server)
         run: |
