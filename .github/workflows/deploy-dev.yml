@@ -1,13 +1,13 @@
 name: Deploy (dev)
 
-# Two machines:
-#   • RUNNER (self-hosted "builder")  — checks out, builds both apps. Holds the
-#     frontend build-time .env (NEXT_PUBLIC_* are baked in here, at build time).
-#   • DEV SERVER (separate host)      — runs the backend jar + Next.js server behind
-#     nginx. Holds the backend's external application.yaml. Reached over SSH.
+# Auto-routing deploy. Both candidate machines carry the shared label `deploy`;
+# GitHub schedules this single job on whichever is ONLINE:
+#   • DEDICATED RUNNER (separate host) → deploys to the dev server over SSH/rsync.
+#   • DEV SERVER itself (runner == server) → deploys locally, no SSH.
 #
-# The runner pushes artifacts to the dev server with rsync-over-SSH and restarts the
-# services there via the control scripts. See deploy/README.md for one-time setup.
+# The machine is identified at runtime by a marker file that exists ONLY on the
+# server: $MARKER (/opt/pangreksa-crm/.local-deploy). Present → local deploy;
+# absent → remote (SSH) deploy. See deploy/README.md for one-time setup.
 
 on:
   push:
@@ -19,21 +19,24 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  # Path on the RUNNER machine holding the frontend build-time env (not in the repo).
+  # Frontend build-time env (NEXT_PUBLIC_* baked in here). Must exist on BOTH machines,
+  # since the build can run on either.
   FE_ENV_FILE: /opt/pangreksa-crm/config/frontend.env
-  # Target paths on the DEV SERVER.
+  # Deployment target paths (same on both machines).
   BE_DIR: /opt/pangreksa-crm/backend
   FE_DIR: /opt/pangreksa-crm/frontend
   BIN_DIR: /opt/pangreksa-crm/bin
   BE_CONFIG: /opt/pangreksa-crm/config/application.yaml
-  # SSH target — runner already has passwordless access; no key setup needed.
+  # Server marker — exists ONLY on the dev server; drives local-vs-remote routing.
+  MARKER: /opt/pangreksa-crm/.local-deploy
+  # SSH target (used only on the remote path). Runner already has passwordless access.
   SSH_TARGET: ${{ secrets.DEV_SSH_USER }}@${{ secrets.DEV_SSH_HOST }}
   SSH_PORT: ${{ vars.DEV_SSH_PORT || '22' }}
 
 jobs:
   deploy:
     environment: dev
-    runs-on: [self-hosted, Linux]   # the build runner (separate from the dev server)
+    runs-on: [self-hosted, Linux]   # lands on whichever machine is online
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -56,7 +59,7 @@ jobs:
           chmod +x mvnw
           ./mvnw -B -ntp -DskipTests clean package
 
-      # ── Build frontend (NEXT_PUBLIC_* baked from the runner's env file) ──
+      # ── Build frontend (NEXT_PUBLIC_* baked from the local frontend.env) ──
       - name: Build frontend
         working-directory: pangreksa-crm-fe
         run: |
@@ -64,17 +67,29 @@ jobs:
           npm ci
           npm run build
 
-      # ── Deploy backend: ship jar, restart via pre-installed script ──
-      - name: Deploy backend
+      # ── Decide deploy mode by the server-only marker file ──
+      - name: Detect deploy mode
+        id: detect
         run: |
+          if [ -f "$MARKER" ]; then
+            echo "mode=local" >> "$GITHUB_OUTPUT"
+            echo "Running ON the dev server → local deploy"
+          else
+            echo "mode=remote" >> "$GITHUB_OUTPUT"
+            echo "Running on the dedicated runner → remote (SSH) deploy"
+          fi
+
+      # ════════════════════════ REMOTE PATH (dedicated runner → SSH) ════════════════════════
+      - name: Deploy (remote, over SSH)
+        if: steps.detect.outputs.mode == 'remote'
+        run: |
+          # Backend: ship jar, restart via pre-installed script.
           ssh -p "$SSH_PORT" "$SSH_TARGET" "mkdir -p '$BE_DIR/logs'"
           rsync -az -e "ssh -p $SSH_PORT" pangreksa-crm-be/target/crm-be-*.jar "$SSH_TARGET:$BE_DIR/app.jar"
           ssh -p "$SSH_PORT" "$SSH_TARGET" "PANGREKSA_BE_DIR='$BE_DIR' PANGREKSA_BE_CONFIG='$BE_CONFIG' '$BIN_DIR/pangreksa-be.sh' restart"
 
-      # ── Deploy frontend: ship build output, install runtime deps ON the dev server
-      #    (so native binaries match its platform), then restart the Next server ──
-      - name: Deploy frontend
-        run: |
+          # Frontend: ship build output, install runtime deps ON the server (native binaries),
+          # then restart the Next server. nvm is sourced for node/npm in the SSH shell.
           ssh -p "$SSH_PORT" "$SSH_TARGET" "mkdir -p '$FE_DIR/.next' '$FE_DIR/public'"
           rsync -az --delete -e "ssh -p $SSH_PORT" --exclude 'cache' pangreksa-crm-fe/.next/ "$SSH_TARGET:$FE_DIR/.next/"
           rsync -az -e "ssh -p $SSH_PORT" pangreksa-crm-fe/package.json pangreksa-crm-fe/package-lock.json pangreksa-crm-fe/next.config.ts "$SSH_TARGET:$FE_DIR/"
@@ -83,7 +98,34 @@ jobs:
           fi
           ssh -p "$SSH_PORT" "$SSH_TARGET" ". \$HOME/.nvm/nvm.sh && cd '$FE_DIR' && npm ci --omit=dev && PANGREKSA_FE_DIR='$FE_DIR' '$BIN_DIR/pangreksa-fe.sh' restart"
 
-      - name: Health check (on dev server)
+      - name: Health check (remote)
+        if: steps.detect.outputs.mode == 'remote'
         run: |
           sleep 5
           ssh -p "$SSH_PORT" "$SSH_TARGET" "curl -s -o /dev/null -w 'frontend HTTP %{http_code}\n' http://127.0.0.1:3000/login; curl -s -o /dev/null -w 'backend  HTTP %{http_code}\n' -X POST -H 'Content-Type: application/json' -d '{\"username\":\"x\",\"password\":\"x\"}' http://127.0.0.1:8080/api/auth/login"
+
+      # ════════════════════════ LOCAL PATH (runner == server, no SSH) ════════════════════════
+      - name: Deploy (local)
+        if: steps.detect.outputs.mode == 'local'
+        run: |
+          # Backend: copy jar in place, restart. JAVA_HOME (JDK 25) comes from setup-java.
+          mkdir -p "$BE_DIR/logs"
+          cp pangreksa-crm-be/target/crm-be-*.jar "$BE_DIR/app.jar"
+          PANGREKSA_BE_DIR="$BE_DIR" PANGREKSA_BE_CONFIG="$BE_CONFIG" "$BIN_DIR/pangreksa-be.sh" restart
+
+          # Frontend: sync build output locally, install runtime deps, restart the Next server.
+          # node/npm come from setup-node (in PATH for this job).
+          mkdir -p "$FE_DIR/.next" "$FE_DIR/public"
+          rsync -a --delete --exclude 'cache' pangreksa-crm-fe/.next/ "$FE_DIR/.next/"
+          cp pangreksa-crm-fe/package.json pangreksa-crm-fe/package-lock.json pangreksa-crm-fe/next.config.ts "$FE_DIR/"
+          if [ -d pangreksa-crm-fe/public ]; then
+            rsync -a --delete pangreksa-crm-fe/public/ "$FE_DIR/public/"
+          fi
+          cd "$FE_DIR" && npm ci --omit=dev && PANGREKSA_FE_DIR="$FE_DIR" "$BIN_DIR/pangreksa-fe.sh" restart
+
+      - name: Health check (local)
+        if: steps.detect.outputs.mode == 'local'
+        run: |
+          sleep 5
+          curl -s -o /dev/null -w 'frontend HTTP %{http_code}\n' http://127.0.0.1:3000/login
+          curl -s -o /dev/null -w 'backend  HTTP %{http_code}\n' -X POST -H 'Content-Type: application/json' -d '{"username":"x","password":"x"}' http://127.0.0.1:8080/api/auth/login
