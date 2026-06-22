@@ -52,20 +52,38 @@ jobs:
         with:
           node-version: '20'
 
-      # ── Build backend (jar) ──
+      # ── Build backend (jar) — in-process Kotlin compile avoids the daemon-RMI hang ──
       - name: Build backend
         working-directory: pangreksa-crm-be
         run: |
+          set -x
+          free -h || true
           chmod +x mvnw
-          ./mvnw -B -ntp -DskipTests clean package
+          ./mvnw -B -ntp -DskipTests -Dkotlin.compiler.execution.strategy=in-process clean package
+          free -h || true
 
       # ── Build frontend (NEXT_PUBLIC_* baked from the local frontend.env) ──
       - name: Build frontend
         working-directory: pangreksa-crm-fe
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
         run: |
+          set -x
+          node -v; npm -v
+          free -h || true
+          # Cap V8 heap at ~75% of RAM so it GCs hard instead of being OOM-killed.
+          mem_mb=$(free -m | awk '/^Mem:/{print $2}')
+          export NODE_OPTIONS="--max-old-space-size=$(( mem_mb * 3 / 4 ))"
+          echo "NODE_OPTIONS=$NODE_OPTIONS"
+          trap 'echo "=== build failed; memory state ==="; free -h || true; dmesg 2>/dev/null | tail -n 20 || true' ERR
           cp "$FE_ENV_FILE" .env.production
-          npm ci
+          echo "::group::npm ci"
+          npm ci --no-audit --no-fund
+          echo "::endgroup::"
+          echo "::group::next build"
           npm run build
+          echo "::endgroup::"
+          free -h || true
 
       # ── Decide deploy mode by the server-only marker file ──
       - name: Detect deploy mode
