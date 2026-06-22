@@ -17,6 +17,7 @@ import com.pangreksa.crm.user.domain.AppUser
 import com.pangreksa.crm.user.domain.Role
 import com.pangreksa.crm.user.domain.RoleRepository
 import com.pangreksa.crm.user.domain.UserRepository
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.CommandLineRunner
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Component
@@ -24,7 +25,11 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.LocalDate
 
-/** Seeds configuration, lookups, roles/users, and sample CRM records on first run. */
+/**
+ * Seeds the baseline (configuration, lookups, Admin role, admin user) on first run — always.
+ * Demo/sample data (Sales Manager/Rep roles, demo users, and sample CRM records) is seeded
+ * only when `pangreksa.seed=true` (defaults false), e.g. in demo environments.
+ */
 @Component
 class DataSeeder(
     private val configs: ConfigurationRepository,
@@ -36,6 +41,7 @@ class DataSeeder(
     private val leads: LeadRepository,
     private val deals: DealRepository,
     private val encoder: PasswordEncoder,
+    @Value("\${pangreksa.seed:false}") private val seedSample: Boolean,
 ) : CommandLineRunner {
 
     private val lk = mutableMapOf<String, Lookup>()
@@ -46,32 +52,47 @@ class DataSeeder(
     }
     private fun ref(category: String, code: String) = lk["$category:$code"]
 
-    override fun run(vararg args: String) {
-        if (users.count() > 0L) return
+    /** Re-hydrate the in-memory lookup map from the DB (no-op when the baseline ran this run). */
+    private fun loadLookups() {
+        if (lk.isEmpty()) lookups.findAll().forEach { lk["${it.category}:${it.code}"] = it }
+    }
 
+    // Canonical ordered codes shared by baseline (creation) and sample (cycling).
+    private val dealStageCodes = listOf(
+        "Qualification", "Needs Analysis", "Value Proposition",
+        "Identify Decision Makers", "Proposal/Price Quote", "Negotiation/Review",
+    )
+    private val dealStageProbabilities = listOf(10, 20, 40, 60, 75, 90)
+    private val leadStatusCodes = listOf(
+        "Not Contacted", "Attempted to Contact", "Contact in Future", "Contacted",
+        "Pre-Qualified", "Not Qualified", "Junk Lead", "Lost Lead",
+    )
+    private val sampleSourceCodes = listOf("Advertisement", "Cold Call", "Trade Show", "Web Download", "Partner", "Chat")
+
+    override fun run(vararg args: String) {
+        if (users.count() == 0L) seedBaseline()
+        if (seedSample && accounts.count() == 0L) seedSample()
+    }
+
+    /** Configuration, lookups, Admin role, and the admin user — always seeded on first run. */
+    private fun seedBaseline() {
         // ---- Configuration ----
         configs.save(Configuration("currency", "IDR", "Currency"))
         configs.save(Configuration("decimal_places", "0", "Decimal places"))
         configs.save(Configuration("locale", "id-ID", "Locale"))
 
         // ---- Lookups ----
-        val stages = listOf(
-            "Qualification" to 10, "Needs Analysis" to 20, "Value Proposition" to 40,
-            "Identify Decision Makers" to 60, "Proposal/Price Quote" to 75, "Negotiation/Review" to 90,
-        )
-        stages.forEachIndexed { i, (s, p) -> put("deal_stage", s, i, mapOf("probability" to p, "closed" to false)) }
+        dealStageCodes.forEachIndexed { i, s ->
+            put("deal_stage", s, i, mapOf("probability" to dealStageProbabilities[i], "closed" to false))
+        }
         put("deal_stage", "Closed Won", 6, mapOf("probability" to 100, "closed" to true, "won" to true))
         put("deal_stage", "Closed Lost", 7, mapOf("probability" to 0, "closed" to true, "won" to false))
         put("deal_stage", "Closed Lost to Competition", 8, mapOf("probability" to 0, "closed" to true, "won" to false))
 
         listOf("Existing Business", "New Business").forEachIndexed { i, s -> put("deal_type", s, i) }
 
-        val statuses = listOf(
-            "Not Contacted" to false, "Attempted to Contact" to false, "Contact in Future" to false,
-            "Contacted" to false, "Pre-Qualified" to false, "Not Qualified" to true,
-            "Junk Lead" to true, "Lost Lead" to true,
-        )
-        statuses.forEachIndexed { i, (s, closed) -> put("lead_status", s, i, mapOf("closed" to closed)) }
+        val closedStatuses = setOf("Not Qualified", "Junk Lead", "Lost Lead")
+        leadStatusCodes.forEachIndexed { i, s -> put("lead_status", s, i, mapOf("closed" to (s in closedStatuses))) }
 
         listOf("Advertisement", "Cold Call", "Employee Referral", "External Referral", "Online Store",
             "Partner", "Public Relations", "Trade Show", "Web Download", "Web Research", "Chat")
@@ -91,8 +112,22 @@ class DataSeeder(
             "Missed Follow Ups", "Wrong Target", "Lost to Competitor")
             .forEachIndexed { i, s -> put("reason_for_loss", s, i) }
 
-        // ---- Roles (hierarchy: Admin > Sales Manager > Sales Rep) ----
+        // ---- Admin role + admin user ----
         val admin = roles.save(Role("Admin", "Full access", null, Permissions.ALL.toMutableSet()))
+        users.save(
+            AppUser(
+                username = "admin", fullName = "Admin", email = "admin@pangreksa.test",
+                passwordHash = encoder.encode("admin")!!, active = true, role = admin,
+            ),
+        )
+    }
+
+    /** Demo roles/users and sample CRM records — only when `pangreksa.seed=true`. */
+    private fun seedSample() {
+        loadLookups()
+
+        // ---- Roles (hierarchy: Admin > Sales Manager > Sales Rep) ----
+        val admin = roles.findByName("Admin") ?: error("Admin role missing — baseline not seeded")
         val managerPerms = (Permissions.MODULES.flatMap { Permissions.crud(it) }).toMutableSet()
         val manager = roles.save(Role("Sales Manager", "Manages a sales team", admin, managerPerms))
         val repPerms = Permissions.MODULES.flatMap { listOf("${it}_VIEW", "${it}_CREATE", "${it}_EDIT") }.toMutableSet()
@@ -105,7 +140,6 @@ class DataSeeder(
                 passwordHash = encoder.encode(username)!!, active = true, role = role,
             ),
         )
-        user("admin", "Admin", admin)
         val singgih = user("singgih", "Singgih Yunanto", manager)
         val dewi = user("dewi", "Dewi Anggraini", rep)
         val bima = user("bima", "Bima Eka", rep)
@@ -156,21 +190,18 @@ class DataSeeder(
             Triple("Delgado", "Paula", "Proseware"), Triple("Novak", "Petr", "Litware"),
             Triple("Hassan", "Layla", "Coho Vineyard"), Triple("Berg", "Sven", "Alpine Ski House"),
         )
-        val statusCodes = statuses.map { it.first }
-        val sourceCodes = listOf("Advertisement", "Cold Call", "Trade Show", "Web Download", "Partner", "Chat")
         leadSpecs.forEachIndexed { i, (last, first, company) ->
             leads.save(Lead(
                 firstName = first, lastName = last, company = company, title = "Decision Maker",
                 email = "${first.lowercase()}@${company.substringBefore(' ').lowercase()}.test",
                 phone = "+62-812-555-${1000 + i}",
-                leadStatus = ref("lead_status", statusCodes[i % statusCodes.size]),
-                leadSource = ref("lead_source", sourceCodes[i % sourceCodes.size]),
+                leadStatus = ref("lead_status", leadStatusCodes[i % leadStatusCodes.size]),
+                leadSource = ref("lead_source", sampleSourceCodes[i % sampleSourceCodes.size]),
                 rating = ref("rating", "Active"), annualRevenue = BigDecimal((i + 2) * 1_250_000),
             ).also { it.owner = repUsers[i % repUsers.size] })
         }
 
         // ---- Deals ----
-        val stageCodes = stages.map { it.first }
         val dealSpecs = listOf(
             "Acme — platform expansion" to (0 to 120000.0), "Globex — ERP rollout" to (1 to 480000.0),
             "Initech — managed services" to (2 to 64000.0), "Umbrella — renewal 2026" to (3 to 96000.0),
@@ -182,7 +213,7 @@ class DataSeeder(
         )
         dealSpecs.forEachIndexed { i, (name, pair) ->
             val (ai, amt) = pair
-            val stage = ref("deal_stage", stageCodes[i % stageCodes.size])!!
+            val stage = ref("deal_stage", dealStageCodes[i % dealStageCodes.size])!!
             val prob = (stage.extra["probability"] as? Number)?.toInt() ?: 0
             val amount = BigDecimal.valueOf(amt)
             deals.save(Deal(
@@ -192,7 +223,7 @@ class DataSeeder(
                 type = ref("deal_type", if (i % 2 == 0) "New Business" else "Existing Business"),
                 probability = prob,
                 expectedRevenue = amount.multiply(BigDecimal(prob)).divide(BigDecimal(100), 2, RoundingMode.HALF_UP),
-                leadSource = ref("lead_source", sourceCodes[i % sourceCodes.size]),
+                leadSource = ref("lead_source", sampleSourceCodes[i % sampleSourceCodes.size]),
             ).also { it.owner = repUsers[i % repUsers.size] })
         }
     }

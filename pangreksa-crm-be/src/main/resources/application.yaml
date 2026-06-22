@@ -20,6 +20,9 @@ server:
   port: 8080
 
 pangreksa:
+  # Seed demo/sample CRM data (Manager/Rep roles, demo users, accounts/contacts/leads/deals)
+  # on a fresh DB. The baseline (config, lookups, Admin role, admin user) is always seeded.
+  seed: false
   cors:
     allowed-origins: "http://localhost:3000"
   jwt:
