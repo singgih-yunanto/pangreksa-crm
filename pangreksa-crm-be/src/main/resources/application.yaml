@@ -18,6 +18,10 @@ spring:
 
 server:
   port: 8080
+  # Honor nginx's X-Forwarded-Proto/Host so Spring reconstructs the original https origin
+  # behind the TLS-terminating reverse proxy. Without this, same-origin requests from an
+  # https page look cross-origin (https Origin vs http request) and are rejected by CORS.
+  forward-headers-strategy: framework
 
 pangreksa:
   # Seed demo/sample CRM data (Manager/Rep roles, demo users, accounts/contacts/leads/deals)

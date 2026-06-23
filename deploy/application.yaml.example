@@ -1,0 +1,39 @@
+# Pangreksa CRM — backend EXTERNAL config (dev server).
+#
+# Copy to the dev server (NOT committed) and point the backend at it:
+#   /opt/pangreksa/config/application.yaml
+# Spring Boot loads it via --spring.config.additional-location, and these values
+# OVERRIDE the defaults baked into the jar. Only put what differs / is secret here.
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/pangreksa_crm
+    username: pangreksa
+    password: CHANGE_ME_db_password
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+server:
+  port: 8080
+  # Behind nginx with TLS termination — honor X-Forwarded-Proto/Host so Spring sees the
+  # real https origin (otherwise same-origin requests are wrongly flagged as CORS).
+  forward-headers-strategy: framework
+
+pangreksa:
+  # Demo/sample CRM data on a fresh DB (default false). The baseline — configuration,
+  # lookups, Admin role, admin user — is ALWAYS seeded. Set true only for demo environments.
+  # seed: true
+  cors:
+    # Same-origin via nginx → CORS normally isn't exercised. Set this to your real page
+    # origin (scheme + host, no trailing slash) as a safety net, e.g. the https domain.
+    allowed-origins: "https://crm.fusi24.com"
+  jwt:
+    # MUST be a long random string (HS256 needs >= 32 bytes). Generate e.g.:
+    #   openssl rand -base64 48
+    secret: "CHANGE_ME_to_a_long_random_secret_at_least_32_bytes_xxxxxxxxxxxx"
+    expiry-hours: 12
+
+logging:
+  level:
+    org.hibernate.SQL: warn
