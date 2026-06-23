@@ -1,5 +1,9 @@
+// Same-origin in production: when NEXT_PUBLIC_API_BASE_URL is unset/empty, the app calls
+// "/api/..." RELATIVE, so nginx serves the frontend and proxies the API on one origin (no
+// CORS). Only `next dev` (no nginx in front) falls back to the backend on localhost:8080.
 export const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  (process.env.NODE_ENV === "development" ? "http://localhost:8080" : "");
 
 const TOKEN_KEY = "pangreksa-token";
 export function getToken(): string | null {
