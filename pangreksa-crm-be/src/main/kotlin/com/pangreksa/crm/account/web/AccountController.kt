@@ -27,8 +27,18 @@ class AccountController(private val service: AccountService) {
         @RequestParam(defaultValue = "50") limit: Int,
         @RequestParam(required = false) q: String?,
         @RequestParam(required = false) sort: String?,
+        @RequestParam(required = false) accountTypeId: Long?,
+        @RequestParam(required = false) industryId: Long?,
+        @RequestParam(required = false) ownershipId: Long?,
+        @RequestParam(required = false) ratingId: Long?,
+        @RequestParam(required = false) ownerId: Long?,
+        @RequestParam(required = false) employeesMin: Int?,
+        @RequestParam(required = false) employeesMax: Int?,
     ): ResponseEntity<List<AccountDto>> {
-        val page = service.list(offset, limit, q, sort)
+        val page = service.list(
+            offset, limit, q, sort,
+            accountTypeId, industryId, ownershipId, ratingId, ownerId, employeesMin, employeesMax,
+        )
         return ResponseEntity.ok()
             .header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "X-Total-Count")
             .header("X-Total-Count", page.total.toString())

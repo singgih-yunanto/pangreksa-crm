@@ -27,8 +27,10 @@ class ContactController(private val service: ContactService) {
         @RequestParam(defaultValue = "50") limit: Int,
         @RequestParam(required = false) q: String?,
         @RequestParam(required = false) sort: String?,
+        @RequestParam(required = false) leadSourceId: Long?,
+        @RequestParam(required = false) ownerId: Long?,
     ): ResponseEntity<List<ContactDto>> {
-        val page = service.list(offset, limit, q, sort)
+        val page = service.list(offset, limit, q, sort, leadSourceId, ownerId)
         return ResponseEntity.ok()
             .header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "X-Total-Count")
             .header("X-Total-Count", page.total.toString())

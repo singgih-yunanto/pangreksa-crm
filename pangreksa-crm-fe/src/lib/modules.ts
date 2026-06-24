@@ -12,6 +12,14 @@ export type FormField = {
 export type ColumnDef = { key: string; label: string; type?: FieldType; primary?: boolean };
 export type DetailField = { key: string; label: string; type?: FieldType };
 
+/** A list filter. `key` is the API query-param base (range kinds append Min/Max or From/To). */
+export type FilterDef = {
+  key: string;
+  label: string;
+  kind: "lookup" | "numberRange" | "dateRange" | "owner";
+  lookupCategory?: string; // for kind "lookup"
+};
+
 export type ModuleConfig = {
   key: string;
   endpoint: string;
@@ -22,6 +30,7 @@ export type ModuleConfig = {
   title: (r: any) => string;
   subtitle?: (r: any) => string;
   columns: ColumnDef[];
+  filters?: FilterDef[];
   kanban?: { field: string; idField: string; lookupCategory: string; sumField?: string };
   stageProgress?: { field: string; idField: string; lookupCategory: string };
   summaryChips: DetailField[];
@@ -45,6 +54,14 @@ export const MODULES: Record<string, ModuleConfig> = {
       { key: "stage", label: "Stage" }, { key: "amount", label: "Amount", type: "currency" },
       { key: "probability", label: "Prob", type: "number" }, { key: "closingDate", label: "Close date", type: "date" },
       { key: "ownerName", label: "Owner" },
+    ],
+    filters: [
+      { key: "stageId", label: "Stage", kind: "lookup", lookupCategory: "deal_stage" },
+      { key: "typeId", label: "Type", kind: "lookup", lookupCategory: "deal_type" },
+      { key: "leadSourceId", label: "Lead source", kind: "lookup", lookupCategory: "lead_source" },
+      { key: "amount", label: "Amount", kind: "numberRange" },
+      { key: "closing", label: "Closing date", kind: "dateRange" },
+      { key: "ownerId", label: "Owner", kind: "owner" },
     ],
     kanban: { field: "stage", idField: "stageId", lookupCategory: "deal_stage", sumField: "amount" },
     stageProgress: { field: "stage", idField: "stageId", lookupCategory: "deal_stage" },
@@ -85,6 +102,13 @@ export const MODULES: Record<string, ModuleConfig> = {
       { key: "fullName", label: "Name", primary: true }, { key: "company", label: "Company" },
       { key: "email", label: "Email" }, { key: "leadStatus", label: "Status" },
       { key: "leadSource", label: "Source" }, { key: "ownerName", label: "Owner" },
+    ],
+    filters: [
+      { key: "leadStatusId", label: "Status", kind: "lookup", lookupCategory: "lead_status" },
+      { key: "leadSourceId", label: "Source", kind: "lookup", lookupCategory: "lead_source" },
+      { key: "ratingId", label: "Rating", kind: "lookup", lookupCategory: "rating" },
+      { key: "industryId", label: "Industry", kind: "lookup", lookupCategory: "industry" },
+      { key: "ownerId", label: "Owner", kind: "owner" },
     ],
     kanban: { field: "leadStatus", idField: "leadStatusId", lookupCategory: "lead_status" },
     stageProgress: { field: "leadStatus", idField: "leadStatusId", lookupCategory: "lead_status" },
@@ -128,7 +152,14 @@ export const MODULES: Record<string, ModuleConfig> = {
       { key: "industry", label: "Industry" }, { key: "phone", label: "Phone" },
       { key: "employees", label: "Employees", type: "number" }, { key: "ownerName", label: "Owner" },
     ],
-    kanban: { field: "accountType", idField: "accountTypeId", lookupCategory: "account_type" },
+    filters: [
+      { key: "accountTypeId", label: "Type", kind: "lookup", lookupCategory: "account_type" },
+      { key: "industryId", label: "Industry", kind: "lookup", lookupCategory: "industry" },
+      { key: "ownershipId", label: "Ownership", kind: "lookup", lookupCategory: "ownership" },
+      { key: "ratingId", label: "Rating", kind: "lookup", lookupCategory: "rating" },
+      { key: "employees", label: "Employees", kind: "numberRange" },
+      { key: "ownerId", label: "Owner", kind: "owner" },
+    ],
     summaryChips: [
       { key: "accountType", label: "Type" }, { key: "industry", label: "Industry" },
       { key: "annualRevenue", label: "Annual revenue", type: "currency" }, { key: "employees", label: "Employees", type: "number" },
@@ -174,7 +205,10 @@ export const MODULES: Record<string, ModuleConfig> = {
       { key: "title", label: "Title" }, { key: "email", label: "Email" },
       { key: "phone", label: "Phone" }, { key: "ownerName", label: "Owner" },
     ],
-    kanban: { field: "leadSource", idField: "leadSourceId", lookupCategory: "lead_source" },
+    filters: [
+      { key: "leadSourceId", label: "Lead source", kind: "lookup", lookupCategory: "lead_source" },
+      { key: "ownerId", label: "Owner", kind: "owner" },
+    ],
     summaryChips: [
       { key: "accountName", label: "Account" }, { key: "title", label: "Title" },
       { key: "email", label: "Email" }, { key: "phone", label: "Phone" },

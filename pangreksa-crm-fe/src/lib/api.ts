@@ -64,13 +64,16 @@ export async function fetchMe(): Promise<Me> {
 /* ----------------------------- Records ----------------------------- */
 export async function listRecords<T = Record>(
   endpoint: string,
-  params: { offset?: number; limit?: number; q?: string; sort?: string } = {},
+  params: { offset?: number; limit?: number; q?: string; sort?: string; filters?: { [k: string]: string } } = {},
 ): Promise<ListResult<T>> {
   const u = new URLSearchParams();
   u.set("offset", String(params.offset ?? 0));
   u.set("limit", String(params.limit ?? 30));
   if (params.q) u.set("q", params.q);
   if (params.sort) u.set("sort", params.sort);
+  for (const [k, v] of Object.entries(params.filters ?? {})) {
+    if (v !== "" && v != null) u.set(k, v);
+  }
   const res = await ok(await authedFetch(`/api/${endpoint}?${u.toString()}`));
   const total = Number(res.headers.get("X-Total-Count") ?? "0");
   return { items: (await res.json()) as T[], total };

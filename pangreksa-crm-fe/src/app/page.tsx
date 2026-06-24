@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useAllRecords } from "@/lib/hooks";
+import { useAuth } from "@/lib/auth";
 import { money } from "@/lib/format";
 import { Card, InitialChip } from "@/components/ui";
 
@@ -16,6 +17,8 @@ function Kpi({ label, value, sub }: { label: string; value: string; sub?: string
 }
 
 export default function Dashboard() {
+  const { user } = useAuth();
+  const firstName = user?.fullName?.split(" ")[0] ?? "there";
   const deals = useAllRecords("deals").data ?? [];
   const leads = useAllRecords("leads").data ?? [];
   const open = deals.filter((d: any) => !(d.stageExtra && d.stageExtra.closed));
@@ -29,7 +32,7 @@ export default function Dashboard() {
     <div className="flex flex-col gap-5">
       <div>
         <p className="eyebrow">This quarter</p>
-        <h1 className="text-[28px] leading-tight">Good to see you, Singgih.</h1>
+        <h1 className="text-[28px] leading-tight">Good to see you, {firstName}.</h1>
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <Kpi label="Pipeline value" value={money(pipeline)} sub={`${open.length} open deals`} />

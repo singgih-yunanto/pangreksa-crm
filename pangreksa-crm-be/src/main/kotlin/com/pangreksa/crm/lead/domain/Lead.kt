@@ -46,6 +46,13 @@ class Lead(
     @Column(columnDefinition = "text") var description: String? = null,
 ) : OwnedEntity()
 
+private const val FILTERS =
+    "and (:leadStatusId is null or l.leadStatus.id = :leadStatusId) " +
+    "and (:leadSourceId is null or l.leadSource.id = :leadSourceId) " +
+    "and (:ratingId is null or l.rating.id = :ratingId) " +
+    "and (:industryId is null or l.industry.id = :industryId) " +
+    "and (:ownerId is null or l.owner.id = :ownerId)"
+
 interface LeadRepository : JpaRepository<Lead, Long> {
     @Query(
         value = "select l from Lead l " +
@@ -54,16 +61,23 @@ interface LeadRepository : JpaRepository<Lead, Long> {
             "where (:allOwners = true or l.owner.id in :owners) " +
             "and (:q = '' or lower(l.lastName) like lower(concat('%', :q, '%')) " +
             "or lower(l.firstName) like lower(concat('%', :q, '%')) " +
-            "or lower(l.company) like lower(concat('%', :q, '%')))",
+            "or lower(l.company) like lower(concat('%', :q, '%'))) " +
+            FILTERS,
         countQuery = "select count(l) from Lead l where (:allOwners = true or l.owner.id in :owners) " +
             "and (:q = '' or lower(l.lastName) like lower(concat('%', :q, '%')) " +
             "or lower(l.firstName) like lower(concat('%', :q, '%')) " +
-            "or lower(l.company) like lower(concat('%', :q, '%')))",
+            "or lower(l.company) like lower(concat('%', :q, '%'))) " +
+            FILTERS,
     )
     fun search(
         @Param("allOwners") allOwners: Boolean,
         @Param("owners") owners: Collection<Long>,
         @Param("q") q: String,
+        @Param("leadStatusId") leadStatusId: Long?,
+        @Param("leadSourceId") leadSourceId: Long?,
+        @Param("ratingId") ratingId: Long?,
+        @Param("industryId") industryId: Long?,
+        @Param("ownerId") ownerId: Long?,
         pageable: Pageable,
     ): Page<Lead>
 

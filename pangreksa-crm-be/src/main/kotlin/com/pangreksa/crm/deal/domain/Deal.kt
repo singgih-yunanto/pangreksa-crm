@@ -36,6 +36,16 @@ class Deal(
     @Column(columnDefinition = "text") var description: String? = null,
 ) : OwnedEntity()
 
+private const val FILTERS =
+    "and (:stageId is null or d.stage.id = :stageId) " +
+    "and (:typeId is null or d.type.id = :typeId) " +
+    "and (:leadSourceId is null or d.leadSource.id = :leadSourceId) " +
+    "and (:ownerId is null or d.owner.id = :ownerId) " +
+    "and (:amountMin is null or d.amount >= :amountMin) " +
+    "and (:amountMax is null or d.amount <= :amountMax) " +
+    "and (cast(:closingFrom as date) is null or d.closingDate >= :closingFrom) " +
+    "and (cast(:closingTo as date) is null or d.closingDate <= :closingTo)"
+
 interface DealRepository : JpaRepository<Deal, Long> {
     @Query(
         value = "select d from Deal d " +
@@ -44,15 +54,25 @@ interface DealRepository : JpaRepository<Deal, Long> {
             "left join fetch d.owner " +
             "where (:allOwners = true or d.owner.id in :owners) " +
             "and (:q = '' or lower(d.name) like lower(concat('%', :q, '%')) " +
-            "or lower(d.account.name) like lower(concat('%', :q, '%')))",
+            "or lower(d.account.name) like lower(concat('%', :q, '%'))) " +
+            FILTERS,
         countQuery = "select count(d) from Deal d where (:allOwners = true or d.owner.id in :owners) " +
             "and (:q = '' or lower(d.name) like lower(concat('%', :q, '%')) " +
-            "or lower(d.account.name) like lower(concat('%', :q, '%')))",
+            "or lower(d.account.name) like lower(concat('%', :q, '%'))) " +
+            FILTERS,
     )
     fun search(
         @Param("allOwners") allOwners: Boolean,
         @Param("owners") owners: Collection<Long>,
         @Param("q") q: String,
+        @Param("stageId") stageId: Long?,
+        @Param("typeId") typeId: Long?,
+        @Param("leadSourceId") leadSourceId: Long?,
+        @Param("ownerId") ownerId: Long?,
+        @Param("amountMin") amountMin: BigDecimal?,
+        @Param("amountMax") amountMax: BigDecimal?,
+        @Param("closingFrom") closingFrom: LocalDate?,
+        @Param("closingTo") closingTo: LocalDate?,
         pageable: Pageable,
     ): Page<Deal>
 

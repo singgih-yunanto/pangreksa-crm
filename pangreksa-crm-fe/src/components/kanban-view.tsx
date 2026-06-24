@@ -36,13 +36,13 @@ function KCard({ module, row }: { module: ModuleConfig; row: any }) {
 function KColumn({ id, label, count, sum, children }: { id: string; label: string; count: number; sum?: number; children: React.ReactNode }) {
   const { setNodeRef, isOver } = useDroppable({ id });
   return (
-    <div className="w-72 shrink-0 flex flex-col">
+    <div className="w-72 shrink-0 flex flex-col h-full min-h-0">
       <div className="flex items-center gap-2 px-1 pb-2">
         <span className="font-medium text-[13px]">{label}</span>
         <span className="text-[12px] text-muted tabular">{count}</span>
         {sum != null && <span className="ml-auto tabular text-[12px] text-muted">{money(sum)}</span>}
       </div>
-      <div ref={setNodeRef} className={cn("flex-1 min-h-24 rounded-[12px] p-2 flex flex-col gap-2 bg-sunken/60 border border-dashed", isOver ? "border-accent" : "border-transparent")}>
+      <div ref={setNodeRef} className={cn("flex-1 min-h-0 overflow-y-auto rounded-[12px] p-2 flex flex-col gap-2 bg-sunken/60 border border-dashed", isOver ? "border-accent" : "border-transparent")}>
         {children}
       </div>
     </div>
@@ -78,7 +78,7 @@ export function KanbanView({ module }: { module: ModuleConfig }) {
 
   return (
     <DndContext sensors={sensors} onDragEnd={onDragEnd}>
-      <div className="flex gap-3 overflow-x-auto pb-3">
+      <div className="flex gap-3 overflow-x-auto h-full pb-3">
         {cols.map((col) => {
           const items = rows.filter((r) => (r[field] ?? "") === col.label);
           const sum = sumField ? items.reduce((n, r) => n + (Number(r[sumField]) || 0), 0) : undefined;

@@ -1,6 +1,7 @@
 package com.pangreksa.crm.deal.web
 
 import com.pangreksa.crm.deal.service.DealService
+import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -27,8 +28,19 @@ class DealController(private val service: DealService) {
         @RequestParam(defaultValue = "50") limit: Int,
         @RequestParam(required = false) q: String?,
         @RequestParam(required = false) sort: String?,
+        @RequestParam(required = false) stageId: Long?,
+        @RequestParam(required = false) typeId: Long?,
+        @RequestParam(required = false) leadSourceId: Long?,
+        @RequestParam(required = false) ownerId: Long?,
+        @RequestParam(required = false) amountMin: java.math.BigDecimal?,
+        @RequestParam(required = false) amountMax: java.math.BigDecimal?,
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) closingFrom: java.time.LocalDate?,
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) closingTo: java.time.LocalDate?,
     ): ResponseEntity<List<DealDto>> {
-        val page = service.list(offset, limit, q, sort)
+        val page = service.list(
+            offset, limit, q, sort,
+            stageId, typeId, leadSourceId, ownerId, amountMin, amountMax, closingFrom, closingTo,
+        )
         return ResponseEntity.ok()
             .header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "X-Total-Count")
             .header("X-Total-Count", page.total.toString())

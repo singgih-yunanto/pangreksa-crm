@@ -53,6 +53,15 @@ class Account(
     var description: String? = null,
 ) : OwnedEntity()
 
+private const val FILTERS =
+    "and (:accountTypeId is null or a.accountType.id = :accountTypeId) " +
+    "and (:industryId is null or a.industry.id = :industryId) " +
+    "and (:ownershipId is null or a.ownership.id = :ownershipId) " +
+    "and (:ratingId is null or a.rating.id = :ratingId) " +
+    "and (:ownerId is null or a.owner.id = :ownerId) " +
+    "and (:employeesMin is null or a.employees >= :employeesMin) " +
+    "and (:employeesMax is null or a.employees <= :employeesMax)"
+
 interface AccountRepository : JpaRepository<Account, Long> {
     @Query(
         value = "select a from Account a " +
@@ -60,15 +69,24 @@ interface AccountRepository : JpaRepository<Account, Long> {
             "left join fetch a.rating left join fetch a.parentAccount left join fetch a.owner " +
             "where (:allOwners = true or a.owner.id in :owners) " +
             "and (:q = '' or lower(a.name) like lower(concat('%', :q, '%')) " +
-            "or lower(a.website) like lower(concat('%', :q, '%')))",
+            "or lower(a.website) like lower(concat('%', :q, '%'))) " +
+            FILTERS,
         countQuery = "select count(a) from Account a where (:allOwners = true or a.owner.id in :owners) " +
             "and (:q = '' or lower(a.name) like lower(concat('%', :q, '%')) " +
-            "or lower(a.website) like lower(concat('%', :q, '%')))",
+            "or lower(a.website) like lower(concat('%', :q, '%'))) " +
+            FILTERS,
     )
     fun search(
         @Param("allOwners") allOwners: Boolean,
         @Param("owners") owners: Collection<Long>,
         @Param("q") q: String,
+        @Param("accountTypeId") accountTypeId: Long?,
+        @Param("industryId") industryId: Long?,
+        @Param("ownershipId") ownershipId: Long?,
+        @Param("ratingId") ratingId: Long?,
+        @Param("ownerId") ownerId: Long?,
+        @Param("employeesMin") employeesMin: Int?,
+        @Param("employeesMax") employeesMax: Int?,
         pageable: Pageable,
     ): Page<Account>
 

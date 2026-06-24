@@ -23,10 +23,16 @@ class ContactService(
     private val sortable = setOf("lastName", "firstName", "title", "createdAt", "updatedAt")
 
     @Transactional(readOnly = true)
-    fun list(offset: Int, limit: Int, q: String?, sort: String?): Page<Contact> {
+    fun list(
+        offset: Int, limit: Int, q: String?, sort: String?,
+        leadSourceId: Long? = null, ownerId: Long? = null,
+    ): Page<Contact> {
         val ids = access.accessibleOwnerIds()
         val pr = pageRequest(offset, limit, sort, sortable, "lastName")
-        val page = repository.search(ids == null, ids ?: listOf(-1L), q ?: "", pr)
+        val page = repository.search(
+            ids == null, ids ?: listOf(-1L), q ?: "",
+            leadSourceId, ownerId, pr,
+        )
         return Page(page.content, page.totalElements)
     }
 

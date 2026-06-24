@@ -27,8 +27,16 @@ class LeadController(private val service: LeadService) {
         @RequestParam(defaultValue = "50") limit: Int,
         @RequestParam(required = false) q: String?,
         @RequestParam(required = false) sort: String?,
+        @RequestParam(required = false) leadStatusId: Long?,
+        @RequestParam(required = false) leadSourceId: Long?,
+        @RequestParam(required = false) ratingId: Long?,
+        @RequestParam(required = false) industryId: Long?,
+        @RequestParam(required = false) ownerId: Long?,
     ): ResponseEntity<List<LeadDto>> {
-        val page = service.list(offset, limit, q, sort)
+        val page = service.list(
+            offset, limit, q, sort,
+            leadStatusId, leadSourceId, ratingId, industryId, ownerId,
+        )
         return ResponseEntity.ok()
             .header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "X-Total-Count")
             .header("X-Total-Count", page.total.toString())

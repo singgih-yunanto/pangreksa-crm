@@ -49,6 +49,10 @@ class Contact(
     @Column(columnDefinition = "text") var description: String? = null,
 ) : OwnedEntity()
 
+private const val FILTERS =
+    "and (:leadSourceId is null or c.leadSource.id = :leadSourceId) " +
+    "and (:ownerId is null or c.owner.id = :ownerId)"
+
 interface ContactRepository : JpaRepository<Contact, Long> {
     @Query(
         value = "select c from Contact c " +
@@ -58,17 +62,21 @@ interface ContactRepository : JpaRepository<Contact, Long> {
             "and (:q = '' or lower(c.lastName) like lower(concat('%', :q, '%')) " +
             "or lower(c.firstName) like lower(concat('%', :q, '%')) " +
             "or lower(c.email) like lower(concat('%', :q, '%')) " +
-            "or lower(c.account.name) like lower(concat('%', :q, '%')))",
+            "or lower(c.account.name) like lower(concat('%', :q, '%'))) " +
+            FILTERS,
         countQuery = "select count(c) from Contact c where (:allOwners = true or c.owner.id in :owners) " +
             "and (:q = '' or lower(c.lastName) like lower(concat('%', :q, '%')) " +
             "or lower(c.firstName) like lower(concat('%', :q, '%')) " +
             "or lower(c.email) like lower(concat('%', :q, '%')) " +
-            "or lower(c.account.name) like lower(concat('%', :q, '%')))",
+            "or lower(c.account.name) like lower(concat('%', :q, '%'))) " +
+            FILTERS,
     )
     fun search(
         @Param("allOwners") allOwners: Boolean,
         @Param("owners") owners: Collection<Long>,
         @Param("q") q: String,
+        @Param("leadSourceId") leadSourceId: Long?,
+        @Param("ownerId") ownerId: Long?,
         pageable: Pageable,
     ): Page<Contact>
 

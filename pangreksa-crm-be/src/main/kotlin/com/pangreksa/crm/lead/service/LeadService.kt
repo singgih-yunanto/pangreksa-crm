@@ -21,10 +21,17 @@ class LeadService(
     private val sortable = setOf("lastName", "company", "createdAt", "updatedAt")
 
     @Transactional(readOnly = true)
-    fun list(offset: Int, limit: Int, q: String?, sort: String?): Page<Lead> {
+    fun list(
+        offset: Int, limit: Int, q: String?, sort: String?,
+        leadStatusId: Long? = null, leadSourceId: Long? = null, ratingId: Long? = null,
+        industryId: Long? = null, ownerId: Long? = null,
+    ): Page<Lead> {
         val ids = access.accessibleOwnerIds()
         val pr = pageRequest(offset, limit, sort, sortable, "lastName")
-        val page = repository.search(ids == null, ids ?: listOf(-1L), q ?: "", pr)
+        val page = repository.search(
+            ids == null, ids ?: listOf(-1L), q ?: "",
+            leadStatusId, leadSourceId, ratingId, industryId, ownerId, pr,
+        )
         return Page(page.content, page.totalElements)
     }
 

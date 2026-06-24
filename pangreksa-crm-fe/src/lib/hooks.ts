@@ -10,11 +10,11 @@ import {
 
 const PAGE = 30;
 
-export function useInfiniteList(endpoint: string, q?: string, sort?: string) {
+export function useInfiniteList(endpoint: string, q?: string, sort?: string, filters?: { [k: string]: string }) {
   return useInfiniteQuery({
-    queryKey: ["list", endpoint, q ?? "", sort ?? ""],
+    queryKey: ["list", endpoint, q ?? "", sort ?? "", filters ?? {}],
     initialPageParam: 0,
-    queryFn: ({ pageParam }) => listRecords<Record>(endpoint, { offset: pageParam as number, limit: PAGE, q, sort }),
+    queryFn: ({ pageParam }) => listRecords<Record>(endpoint, { offset: pageParam as number, limit: PAGE, q, sort, filters }),
     getNextPageParam: (last, all) => {
       const loaded = all.reduce((n, p) => n + p.items.length, 0);
       return loaded < last.total ? loaded : undefined;

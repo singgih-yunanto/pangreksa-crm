@@ -21,10 +21,17 @@ class AccountService(
     private val sortable = setOf("name", "annualRevenue", "createdAt", "updatedAt")
 
     @Transactional(readOnly = true)
-    fun list(offset: Int, limit: Int, q: String?, sort: String?): Page<Account> {
+    fun list(
+        offset: Int, limit: Int, q: String?, sort: String?,
+        accountTypeId: Long? = null, industryId: Long? = null, ownershipId: Long? = null,
+        ratingId: Long? = null, ownerId: Long? = null, employeesMin: Int? = null, employeesMax: Int? = null,
+    ): Page<Account> {
         val ids = access.accessibleOwnerIds()
         val pr = pageRequest(offset, limit, sort, sortable, "name")
-        val page = repository.search(ids == null, ids ?: listOf(-1L), q ?: "", pr)
+        val page = repository.search(
+            ids == null, ids ?: listOf(-1L), q ?: "",
+            accountTypeId, industryId, ownershipId, ratingId, ownerId, employeesMin, employeesMax, pr,
+        )
         return Page(page.content, page.totalElements)
     }
 

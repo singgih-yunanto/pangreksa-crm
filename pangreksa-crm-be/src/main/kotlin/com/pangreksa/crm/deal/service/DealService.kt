@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.LocalDate
 
 @Service
 class DealService(
@@ -27,10 +28,18 @@ class DealService(
     private val sortable = setOf("name", "amount", "closingDate", "createdAt", "updatedAt")
 
     @Transactional(readOnly = true)
-    fun list(offset: Int, limit: Int, q: String?, sort: String?): Page<Deal> {
+    fun list(
+        offset: Int, limit: Int, q: String?, sort: String?,
+        stageId: Long? = null, typeId: Long? = null, leadSourceId: Long? = null, ownerId: Long? = null,
+        amountMin: BigDecimal? = null, amountMax: BigDecimal? = null,
+        closingFrom: LocalDate? = null, closingTo: LocalDate? = null,
+    ): Page<Deal> {
         val ids = access.accessibleOwnerIds()
         val pr = pageRequest(offset, limit, sort, sortable, "name")
-        val page = repository.search(ids == null, ids ?: listOf(-1L), q ?: "", pr)
+        val page = repository.search(
+            ids == null, ids ?: listOf(-1L), q ?: "",
+            stageId, typeId, leadSourceId, ownerId, amountMin, amountMax, closingFrom, closingTo, pr,
+        )
         return Page(page.content, page.totalElements)
     }
 
