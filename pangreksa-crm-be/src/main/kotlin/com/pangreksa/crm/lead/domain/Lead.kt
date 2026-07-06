@@ -1,6 +1,9 @@
 package com.pangreksa.crm.lead.domain
 
+import com.pangreksa.crm.account.domain.Account
 import com.pangreksa.crm.base.OwnedEntity
+import com.pangreksa.crm.contact.domain.Contact
+import com.pangreksa.crm.deal.domain.Deal
 import com.pangreksa.crm.lookup.domain.Lookup
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
@@ -14,6 +17,7 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import java.math.BigDecimal
+import java.time.LocalDateTime
 
 @Entity
 @Table(name = "leads")
@@ -44,6 +48,11 @@ class Lead(
     var country: String? = null,
     @Column(name = "zip_code") var zipCode: String? = null,
     @Column(columnDefinition = "text") var description: String? = null,
+    @Column(nullable = false) var converted: Boolean = false,
+    @Column(name = "converted_at") var convertedAt: LocalDateTime? = null,
+    @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "converted_account_id") var convertedAccount: Account? = null,
+    @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "converted_contact_id") var convertedContact: Contact? = null,
+    @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "converted_deal_id") var convertedDeal: Deal? = null,
 ) : OwnedEntity()
 
 private const val FILTERS =

@@ -15,6 +15,10 @@ spring:
         format_sql: true
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.yaml
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 12MB
 
 server:
   port: 8080
@@ -27,6 +31,9 @@ pangreksa:
   # Seed demo/sample CRM data (Manager/Rep roles, demo users, accounts/contacts/leads/deals)
   # on a fresh DB. The baseline (config, lookups, Admin role, admin user) is always seeded.
   seed: false
+  # Filesystem root for attachment blobs (FilesystemBlobStore). Mount a volume here in Docker.
+  storage:
+    path: "./storage"
   cors:
     allowed-origins: "http://localhost:3000"
   jwt:

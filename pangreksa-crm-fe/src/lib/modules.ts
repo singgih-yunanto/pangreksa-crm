@@ -1,9 +1,12 @@
-export type FieldType = "text" | "email" | "number" | "currency" | "date" | "textarea" | "lookup";
+export type FieldType = "text" | "email" | "number" | "currency" | "date" | "datetime" | "textarea" | "lookup";
+
+/** Form-only field kinds on top of the display types: polymorphic activity links + datetime. */
+export type FormFieldType = FieldType | "relatedTo" | "who";
 
 export type FormField = {
-  name: string; // submit key (e.g. "stageId", "accountId")
+  name: string; // submit key (e.g. "stageId", "accountId"); for relatedTo/who it's a synthetic label key
   label: string;
-  type: FieldType;
+  type: FormFieldType;
   required?: boolean;
   lookupCategory?: string; // a lookup table category (e.g. "deal_stage")
   lookupEndpoint?: string; // a record FK (e.g. "accounts")
@@ -33,6 +36,7 @@ export type ModuleConfig = {
   filters?: FilterDef[];
   kanban?: { field: string; idField: string; lookupCategory: string; sumField?: string };
   stageProgress?: { field: string; idField: string; lookupCategory: string };
+  calendar?: { dateField: string }; // enables the Calendar view mode (date/datetime field)
   summaryChips: DetailField[];
   sections: { title: string; fields: DetailField[] }[];
   form: FormField[];
@@ -237,6 +241,132 @@ export const MODULES: Record<string, ModuleConfig> = {
     ],
     related: [{ label: "Deals", endpoint: "deals", foreignKey: "contactId" }],
   },
+
+  tasks: {
+    key: "tasks", endpoint: "tasks", singular: "Task", plural: "Tasks", icon: "CheckSquare", perm: "TASK",
+    title: (r) => r.subject, subtitle: (r) => r.whatName ?? r.status ?? "",
+    columns: [
+      { key: "subject", label: "Subject", primary: true }, { key: "status", label: "Status" },
+      { key: "priority", label: "Priority" }, { key: "dueDate", label: "Due", type: "date" },
+      { key: "whatName", label: "Related to" }, { key: "ownerName", label: "Owner" },
+    ],
+    filters: [
+      { key: "statusId", label: "Status", kind: "lookup", lookupCategory: "task_status" },
+      { key: "priorityId", label: "Priority", kind: "lookup", lookupCategory: "task_priority" },
+      { key: "ownerId", label: "Owner", kind: "owner" },
+    ],
+    kanban: { field: "status", idField: "statusId", lookupCategory: "task_status" },
+    stageProgress: { field: "status", idField: "statusId", lookupCategory: "task_status" },
+    calendar: { dateField: "dueDate" },
+    summaryChips: [
+      { key: "status", label: "Status" }, { key: "priority", label: "Priority" },
+      { key: "dueDate", label: "Due date", type: "date" }, { key: "whatName", label: "Related to" },
+    ],
+    sections: [
+      { title: "Task information", fields: [
+        { key: "subject", label: "Subject" }, { key: "status", label: "Status" }, { key: "priority", label: "Priority" },
+        { key: "dueDate", label: "Due date", type: "date" }, { key: "whatName", label: "Related to" },
+        { key: "whoName", label: "Contact" }, { key: "ownerName", label: "Owner" },
+      ]},
+      { title: "Description", fields: [{ key: "description", label: "Description", type: "textarea" }] },
+    ],
+    form: [
+      { name: "subject", label: "Subject", type: "text", required: true },
+      { name: "statusId", label: "Status", type: "lookup", lookupCategory: "task_status" },
+      { name: "priorityId", label: "Priority", type: "lookup", lookupCategory: "task_priority" },
+      { name: "dueDate", label: "Due date", type: "date" },
+      { name: "what", label: "Related to", type: "relatedTo" },
+      { name: "who", label: "Contact", type: "who" },
+      { name: "description", label: "Description", type: "textarea" },
+    ],
+    related: [],
+  },
+
+  meetings: {
+    key: "meetings", endpoint: "meetings", singular: "Meeting", plural: "Meetings", icon: "CalendarDays", perm: "MEETING",
+    title: (r) => r.title, subtitle: (r) => r.whatName ?? r.location ?? "",
+    columns: [
+      { key: "title", label: "Title", primary: true }, { key: "status", label: "Status" },
+      { key: "startAt", label: "Start", type: "datetime" }, { key: "location", label: "Location" },
+      { key: "whatName", label: "Related to" }, { key: "ownerName", label: "Owner" },
+    ],
+    filters: [
+      { key: "statusId", label: "Status", kind: "lookup", lookupCategory: "meeting_status" },
+      { key: "ownerId", label: "Owner", kind: "owner" },
+    ],
+    kanban: { field: "status", idField: "statusId", lookupCategory: "meeting_status" },
+    stageProgress: { field: "status", idField: "statusId", lookupCategory: "meeting_status" },
+    calendar: { dateField: "startAt" },
+    summaryChips: [
+      { key: "status", label: "Status" }, { key: "startAt", label: "Start", type: "datetime" },
+      { key: "endAt", label: "End", type: "datetime" }, { key: "location", label: "Location" },
+    ],
+    sections: [
+      { title: "Meeting information", fields: [
+        { key: "title", label: "Title" }, { key: "status", label: "Status" }, { key: "location", label: "Location" },
+        { key: "startAt", label: "Start", type: "datetime" }, { key: "endAt", label: "End", type: "datetime" },
+        { key: "whatName", label: "Related to" }, { key: "whoName", label: "Contact" }, { key: "ownerName", label: "Owner" },
+      ]},
+      { title: "Description", fields: [{ key: "description", label: "Description", type: "textarea" }] },
+    ],
+    form: [
+      { name: "title", label: "Title", type: "text", required: true },
+      { name: "statusId", label: "Status", type: "lookup", lookupCategory: "meeting_status" },
+      { name: "location", label: "Location", type: "text" },
+      { name: "startAt", label: "Start", type: "datetime" },
+      { name: "endAt", label: "End", type: "datetime" },
+      { name: "what", label: "Related to", type: "relatedTo" },
+      { name: "who", label: "Contact", type: "who" },
+      { name: "description", label: "Description", type: "textarea" },
+    ],
+    related: [],
+  },
+
+  calls: {
+    key: "calls", endpoint: "calls", singular: "Call", plural: "Calls", icon: "Phone", perm: "CALL",
+    title: (r) => r.subject, subtitle: (r) => r.whatName ?? r.callType ?? "",
+    columns: [
+      { key: "subject", label: "Subject", primary: true }, { key: "callType", label: "Type" },
+      { key: "startAt", label: "When", type: "datetime" }, { key: "durationMinutes", label: "Min", type: "number" },
+      { key: "callResult", label: "Result" }, { key: "ownerName", label: "Owner" },
+    ],
+    filters: [
+      { key: "callTypeId", label: "Type", kind: "lookup", lookupCategory: "call_type" },
+      { key: "callResultId", label: "Result", kind: "lookup", lookupCategory: "call_result" },
+      { key: "ownerId", label: "Owner", kind: "owner" },
+    ],
+    kanban: { field: "callResult", idField: "callResultId", lookupCategory: "call_result" },
+    calendar: { dateField: "startAt" },
+    summaryChips: [
+      { key: "callType", label: "Type" }, { key: "startAt", label: "When", type: "datetime" },
+      { key: "durationMinutes", label: "Duration (min)", type: "number" }, { key: "callResult", label: "Result" },
+    ],
+    sections: [
+      { title: "Call information", fields: [
+        { key: "subject", label: "Subject" }, { key: "callType", label: "Type" }, { key: "startAt", label: "Start", type: "datetime" },
+        { key: "durationMinutes", label: "Duration (min)", type: "number" }, { key: "callPurpose", label: "Purpose" },
+        { key: "callResult", label: "Result" }, { key: "whatName", label: "Related to" }, { key: "whoName", label: "Contact" },
+        { key: "ownerName", label: "Owner" },
+      ]},
+      { title: "Description", fields: [{ key: "description", label: "Description", type: "textarea" }] },
+    ],
+    form: [
+      { name: "subject", label: "Subject", type: "text", required: true },
+      { name: "callTypeId", label: "Type", type: "lookup", lookupCategory: "call_type" },
+      { name: "startAt", label: "Start", type: "datetime" },
+      { name: "durationMinutes", label: "Duration (min)", type: "number" },
+      { name: "callPurposeId", label: "Purpose", type: "lookup", lookupCategory: "call_purpose" },
+      { name: "callResultId", label: "Result", type: "lookup", lookupCategory: "call_result" },
+      { name: "what", label: "Related to", type: "relatedTo" },
+      { name: "who", label: "Contact", type: "who" },
+      { name: "description", label: "Description", type: "textarea" },
+    ],
+    related: [],
+  },
 };
 
-export const MODULE_ORDER = ["deals", "leads", "accounts", "contacts"];
+export const MODULE_ORDER = ["deals", "leads", "accounts", "contacts", "tasks", "meetings", "calls"];
+
+/** Modules selectable as an activity's polymorphic "what" (related-to) and "who" targets. */
+export const RELATED_TO_MODULES = ["accounts", "deals", "contacts", "leads"];
+export const WHO_MODULES = ["contacts", "leads"];

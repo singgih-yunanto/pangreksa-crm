@@ -5,21 +5,30 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, Plus, CheckSquare, Phone, CalendarDays, ArrowRightLeft } from "lucide-react";
 import { API_BASE, getToken } from "@/lib/api";
 import { useDelete, useLookups, useRecord, useUpdate } from "@/lib/hooks";
 import { useAuth } from "@/lib/auth";
-import { MODULES, type DetailField } from "@/lib/modules";
+import { MODULES, RELATED_TO_MODULES, type DetailField } from "@/lib/modules";
 import { money } from "@/lib/format";
-import { Button, Card, Dialog, InitialChip, StageProgress, Tabs } from "@/components/ui";
+import { Button, Card, Dialog, InitialChip, StageProgress, Tabs, Badge } from "@/components/ui";
 import { RecordDialog } from "@/components/record-dialog";
+import { Timeline } from "@/components/timeline";
+import { LeadConvertDialog } from "@/components/lead-convert-dialog";
+
+const ACTIVITY_QUICK: { key: string; label: string; icon: React.ComponentType<{ size?: number }> }[] = [
+  { key: "tasks", label: "Task", icon: CheckSquare },
+  { key: "calls", label: "Log call", icon: Phone },
+  { key: "meetings", label: "Meeting", icon: CalendarDays },
+];
 
 function fmt(v: any, type?: string) {
   if (v == null || v === "") return "—";
   if (type === "currency") return money(Number(v));
+  if (type === "datetime") return String(v).slice(0, 16).replace("T", " ");
   return String(v);
 }
-const isMono = (t?: string) => t === "currency" || t === "number" || t === "date";
+const isMono = (t?: string) => t === "currency" || t === "number" || t === "date" || t === "datetime";
 
 export function RecordDetail({ moduleKey, id }: { moduleKey: string; id: string }) {
   const module = MODULES[moduleKey];
@@ -31,6 +40,8 @@ export function RecordDetail({ moduleKey, id }: { moduleKey: string; id: string 
   const [tab, setTab] = React.useState("overview");
   const [edit, setEdit] = React.useState(false);
   const [confirmDel, setConfirmDel] = React.useState(false);
+  const [activityKey, setActivityKey] = React.useState<string | null>(null);
+  const [convertOpen, setConvertOpen] = React.useState(false);
   const stageLookups = useLookups(module.stageProgress?.lookupCategory);
   const stages = (stageLookups.data ?? []).map((l) => l.label);
 
@@ -68,10 +79,32 @@ export function RecordDetail({ moduleKey, id }: { moduleKey: string; id: string 
           {module.subtitle && <p className="text-[13px] text-muted">{module.subtitle(r)}</p>}
         </div>
         <div className="ml-auto flex items-center gap-2">
-          {has(`${module.perm}_EDIT`) && <Button variant="secondary" onClick={() => setEdit(true)}><Pencil size={15} /> Edit</Button>}
+          {RELATED_TO_MODULES.includes(moduleKey) && ACTIVITY_QUICK.map((a) =>
+            has(`${MODULES[a.key].perm}_CREATE`) ? (
+              <Button key={a.key} variant="ghost" size="sm" onClick={() => setActivityKey(a.key)}>
+                <a.icon size={15} /> {a.label}
+              </Button>
+            ) : null,
+          )}
+          {moduleKey === "leads" && !r.converted && has("LEAD_EDIT") && (
+            <Button variant="primary" onClick={() => setConvertOpen(true)}><ArrowRightLeft size={15} /> Convert</Button>
+          )}
+          {has(`${module.perm}_EDIT`) && !(moduleKey === "leads" && r.converted) && (
+            <Button variant="secondary" onClick={() => setEdit(true)}><Pencil size={15} /> Edit</Button>
+          )}
           {has(`${module.perm}_DELETE`) && <Button variant="ghost" size="icon" aria-label="Delete" onClick={() => setConfirmDel(true)}><Trash2 size={17} /></Button>}
         </div>
       </div>
+
+      {moduleKey === "leads" && r.converted && (
+        <Card className="px-5 py-3 flex flex-wrap items-center gap-x-4 gap-y-1">
+          <Badge tone="success">Converted</Badge>
+          <span className="text-[13px] text-muted">This lead is read-only. Created:</span>
+          {r.convertedAccountId && <Link href={`/accounts/${r.convertedAccountId}`} className="text-[13px] font-medium text-accent hover:underline">Account</Link>}
+          {r.convertedContactId && <Link href={`/contacts/${r.convertedContactId}`} className="text-[13px] font-medium text-accent hover:underline">Contact</Link>}
+          {r.convertedDealId && <Link href={`/deals/${r.convertedDealId}`} className="text-[13px] font-medium text-accent hover:underline">Deal</Link>}
+        </Card>
+      )}
 
       <Card className="px-5 py-4">
         <div className="flex flex-wrap gap-x-10 gap-y-3">
@@ -114,12 +147,7 @@ export function RecordDetail({ moduleKey, id }: { moduleKey: string; id: string 
                 })}
               </div>
             )}
-            {tab === "timeline" && (
-              <div className="flex flex-col gap-3">
-                <div className="flex gap-3"><div className="w-2 h-2 rounded-full bg-accent mt-1.5" /><div><p className="text-[13px]">{module.singular} created</p><p className="text-[12px] text-muted tabular">{String(r.createdAt).slice(0, 16).replace("T", " ")}</p></div></div>
-                <div className="flex gap-3"><div className="w-2 h-2 rounded-full bg-strong mt-1.5" /><div><p className="text-[13px]">Last updated</p><p className="text-[12px] text-muted tabular">{String(r.updatedAt).slice(0, 16).replace("T", " ")}</p></div></div>
-              </div>
-            )}
+            {tab === "timeline" && <Timeline moduleKey={moduleKey} recordId={r.id} />}
             {tab === "related" && <RelatedLists moduleKey={moduleKey} record={r} />}
           </div>
         </Card>
@@ -140,6 +168,20 @@ export function RecordDetail({ moduleKey, id }: { moduleKey: string; id: string 
       </div>
 
       <RecordDialog module={module} record={edit ? r : null} open={edit} onClose={() => setEdit(false)} />
+
+      {activityKey && (
+        <RecordDialog
+          module={MODULES[activityKey]}
+          open={!!activityKey}
+          onClose={() => setActivityKey(null)}
+          defaults={{ whatType: moduleKey, whatId: r.id }}
+        />
+      )}
+
+      {moduleKey === "leads" && (
+        <LeadConvertDialog lead={r} open={convertOpen} onClose={() => setConvertOpen(false)} />
+      )}
+
       <Dialog open={confirmDel} onClose={() => setConfirmDel(false)} title={`Delete ${module.singular.toLowerCase()}?`}
         footer={<><Button variant="ghost" onClick={() => setConfirmDel(false)}>Cancel</Button><Button variant="danger" onClick={doDelete}>Delete</Button></>}>
         <p className="text-[14px] text-secondary">This can&apos;t be undone. {module.title(r)} will be removed.</p>

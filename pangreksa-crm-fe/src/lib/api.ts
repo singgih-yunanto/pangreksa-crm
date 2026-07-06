@@ -104,3 +104,71 @@ export type AppConfig = { currency: string; decimalPlaces: number; locale: strin
 export async function fetchConfig(): Promise<AppConfig> {
   return (await ok(await authedFetch(`/api/configuration`))).json();
 }
+
+/* ----------------------------- Timeline ----------------------------- */
+export type TimelineItem = {
+  kind: string; at: string; title: string; subtitle: string | null;
+  actor: string | null; refModule: string | null; refId: number | null;
+};
+export async function fetchTimeline(type: string, id: number | string): Promise<TimelineItem[]> {
+  return (await ok(await authedFetch(`/api/timeline?type=${encodeURIComponent(type)}&id=${id}`))).json();
+}
+
+/* ----------------------------- Notes ----------------------------- */
+export type NoteItem = {
+  id: number; parentType: string; parentId: number; body: string;
+  authorId: number | null; authorName: string | null; createdAt: string;
+};
+export async function listNotes(type: string, id: number | string): Promise<NoteItem[]> {
+  return (await ok(await authedFetch(`/api/notes?type=${encodeURIComponent(type)}&id=${id}`))).json();
+}
+export async function addNote(type: string, id: number | string, body: string): Promise<NoteItem> {
+  return (await ok(await authedFetch(`/api/notes`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ parentType: type, parentId: Number(id), body }),
+  }))).json();
+}
+export async function deleteNote(id: number): Promise<void> {
+  await ok(await authedFetch(`/api/notes/${id}`, { method: "DELETE" }));
+}
+
+/* ----------------------------- Attachments ----------------------------- */
+export type AttachmentItem = {
+  id: number; parentType: string; parentId: number; filename: string;
+  contentType: string | null; sizeBytes: number; ownerId: number | null; ownerName: string | null; createdAt: string;
+};
+export async function listAttachments(type: string, id: number | string): Promise<AttachmentItem[]> {
+  return (await ok(await authedFetch(`/api/attachments?type=${encodeURIComponent(type)}&id=${id}`))).json();
+}
+export async function uploadAttachment(type: string, id: number | string, file: File): Promise<AttachmentItem> {
+  const fd = new FormData();
+  fd.set("parentType", type);
+  fd.set("parentId", String(id));
+  fd.set("file", file);
+  return (await ok(await authedFetch(`/api/attachments`, { method: "POST", body: fd }))).json();
+}
+export async function deleteAttachment(id: number): Promise<void> {
+  await ok(await authedFetch(`/api/attachments/${id}`, { method: "DELETE" }));
+}
+/** Fetch the blob (with the auth header) and trigger a browser download. */
+export async function downloadAttachment(id: number, filename: string): Promise<void> {
+  const res = await ok(await authedFetch(`/api/attachments/${id}/download`));
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+/* ----------------------------- Lead conversion ----------------------------- */
+export type LeadConvertBody = {
+  accountId?: number; contactId?: number;
+  createDeal?: boolean; dealName?: string; dealStageId?: number; dealAmount?: number; dealClosingDate?: string;
+};
+export type LeadConversionResult = { leadId: number; accountId: number; contactId: number; dealId: number | null };
+export async function convertLead(id: number | string, body: LeadConvertBody): Promise<LeadConversionResult> {
+  return (await ok(await authedFetch(`/api/leads/${id}/convert`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+  }))).json();
+}

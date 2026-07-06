@@ -19,6 +19,8 @@ data class LeadDto(
     val skypeId: String?, val twitter: String?,
     val street: String?, val city: String?, val state: String?, val country: String?, val zipCode: String?,
     val description: String?,
+    val converted: Boolean,
+    val convertedAccountId: Long?, val convertedContactId: Long?, val convertedDealId: Long?,
     val ownerId: Long?, val ownerName: String?, val tag: String?,
     val createdAt: LocalDateTime, val updatedAt: LocalDateTime,
 )
@@ -35,6 +37,24 @@ data class LeadRequest(
     val description: String? = null, val tag: String? = null,
 )
 
+/** Lead conversion options. If [accountId]/[contactId] are given, link to those; otherwise create new. */
+data class LeadConvertRequest(
+    val accountId: Long? = null,
+    val contactId: Long? = null,
+    val createDeal: Boolean? = null,
+    val dealName: String? = null,
+    val dealStageId: Long? = null,
+    val dealAmount: BigDecimal? = null,
+    val dealClosingDate: java.time.LocalDate? = null,
+)
+
+data class LeadConversionResult(
+    val leadId: Long,
+    val accountId: Long,
+    val contactId: Long,
+    val dealId: Long?,
+)
+
 fun Lead.toDto() = LeadDto(
     id = id!!, firstName = firstName, lastName = lastName,
     fullName = listOfNotNull(firstName, lastName).joinToString(" ").trim(),
@@ -46,6 +66,9 @@ fun Lead.toDto() = LeadDto(
     ratingId = rating?.id, rating = rating?.label,
     noOfEmployees = noOfEmployees, annualRevenue = annualRevenue, emailOptOut = emailOptOut,
     skypeId = skypeId, twitter = twitter, street = street, city = city, state = state, country = country, zipCode = zipCode,
-    description = description, ownerId = owner?.id, ownerName = owner?.fullName, tag = tag,
+    description = description,
+    converted = converted,
+    convertedAccountId = convertedAccount?.id, convertedContactId = convertedContact?.id, convertedDealId = convertedDeal?.id,
+    ownerId = owner?.id, ownerName = owner?.fullName, tag = tag,
     createdAt = createdAt, updatedAt = updatedAt,
 )

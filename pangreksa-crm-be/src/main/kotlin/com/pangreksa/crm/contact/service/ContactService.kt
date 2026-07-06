@@ -1,6 +1,7 @@
 package com.pangreksa.crm.contact.service
 
 import com.pangreksa.crm.account.domain.AccountRepository
+import com.pangreksa.crm.audit.AuditService
 import com.pangreksa.crm.base.NotFoundException
 import com.pangreksa.crm.base.Page
 import com.pangreksa.crm.base.ValidationException
@@ -19,8 +20,11 @@ class ContactService(
     private val accountRepository: AccountRepository,
     private val access: AccessService,
     private val lookups: LookupService,
+    private val audit: AuditService,
 ) {
     private val sortable = setOf("lastName", "firstName", "title", "createdAt", "updatedAt")
+
+    private fun name(c: Contact) = listOfNotNull(c.firstName, c.lastName).joinToString(" ").trim()
 
     @Transactional(readOnly = true)
     fun list(
@@ -50,7 +54,9 @@ class ContactService(
         val c = Contact(lastName = lastName)
         c.owner = access.currentUser()
         apply(c, req)
-        return repository.save(c)
+        val saved = repository.save(c)
+        audit.record("contacts", saved.id!!, "created", mapOf("name" to name(saved)))
+        return saved
     }
 
     @Transactional
@@ -58,11 +64,17 @@ class ContactService(
         val c = get(id)
         req.lastName?.let { if (it.isBlank()) throw ValidationException("lastName", "Last name is required"); c.lastName = it.trim() }
         apply(c, req)
-        return repository.save(c)
+        val saved = repository.save(c)
+        audit.record("contacts", saved.id!!, "updated", mapOf("name" to name(saved)))
+        return saved
     }
 
     @Transactional
-    fun delete(id: Long) { get(id); repository.deleteById(id) }
+    fun delete(id: Long) {
+        val c = get(id)
+        repository.deleteById(id)
+        audit.record("contacts", id, "deleted", mapOf("name" to name(c)))
+    }
 
     private fun apply(c: Contact, req: ContactRequest) {
         req.firstName?.let { c.firstName = it.trim() }

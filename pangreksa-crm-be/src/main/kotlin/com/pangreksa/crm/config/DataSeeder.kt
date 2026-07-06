@@ -2,6 +2,12 @@ package com.pangreksa.crm.config
 
 import com.pangreksa.crm.account.domain.Account
 import com.pangreksa.crm.account.domain.AccountRepository
+import com.pangreksa.crm.activity.call.domain.Call
+import com.pangreksa.crm.activity.call.domain.CallRepository
+import com.pangreksa.crm.activity.meeting.domain.Meeting
+import com.pangreksa.crm.activity.meeting.domain.MeetingRepository
+import com.pangreksa.crm.activity.task.domain.Task
+import com.pangreksa.crm.activity.task.domain.TaskRepository
 import com.pangreksa.crm.config.domain.Configuration
 import com.pangreksa.crm.config.domain.ConfigurationRepository
 import com.pangreksa.crm.contact.domain.Contact
@@ -10,6 +16,8 @@ import com.pangreksa.crm.deal.domain.Deal
 import com.pangreksa.crm.deal.domain.DealRepository
 import com.pangreksa.crm.lead.domain.Lead
 import com.pangreksa.crm.lead.domain.LeadRepository
+import com.pangreksa.crm.note.domain.Note
+import com.pangreksa.crm.note.domain.NoteRepository
 import com.pangreksa.crm.lookup.domain.Lookup
 import com.pangreksa.crm.lookup.domain.LookupRepository
 import com.pangreksa.crm.security.Permissions
@@ -24,6 +32,7 @@ import org.springframework.stereotype.Component
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.LocalDate
+import java.time.LocalDateTime
 
 /**
  * Seeds the baseline (configuration, lookups, Admin role, admin user) on first run — always.
@@ -40,6 +49,10 @@ class DataSeeder(
     private val contacts: ContactRepository,
     private val leads: LeadRepository,
     private val deals: DealRepository,
+    private val tasks: TaskRepository,
+    private val meetings: MeetingRepository,
+    private val calls: CallRepository,
+    private val notes: NoteRepository,
     private val encoder: PasswordEncoder,
     @Value("\${pangreksa.seed:false}") private val seedSample: Boolean,
 ) : CommandLineRunner {
@@ -211,7 +224,7 @@ class DataSeeder(
             "Initech — Q3 expansion" to (2 to 145000.0), "Soylent — analytics module" to (4 to 210000.0),
             "Hooli — data migration" to (5 to 41000.0), "Stark — security add-on" to (6 to 88000.0),
         )
-        dealSpecs.forEachIndexed { i, (name, pair) ->
+        val dealList = dealSpecs.mapIndexed { i, (name, pair) ->
             val (ai, amt) = pair
             val stage = ref("deal_stage", dealStageCodes[i % dealStageCodes.size])!!
             val prob = (stage.extra["probability"] as? Number)?.toInt() ?: 0
@@ -225,6 +238,42 @@ class DataSeeder(
                 expectedRevenue = amount.multiply(BigDecimal(prob)).divide(BigDecimal(100), 2, RoundingMode.HALF_UP),
                 leadSource = ref("lead_source", sampleSourceCodes[i % sampleSourceCodes.size]),
             ).also { it.owner = repUsers[i % repUsers.size] })
+        }
+
+        // ---- Activities & notes (linked to the first few deals/contacts) so timelines aren't empty ----
+        val now = LocalDateTime.of(2026, 7, 6, 9, 0)
+        dealList.take(4).forEachIndexed { i, deal ->
+            val who = ct.getOrNull(i)
+            val owner = deal.owner ?: repUsers[0]
+            tasks.save(Task(
+                subject = "Follow up on ${deal.name}",
+                status = ref("task_status", if (i % 2 == 0) "In Progress" else "Not Started"),
+                priority = ref("task_priority", if (i == 0) "High" else "Normal"),
+                dueDate = LocalDate.of(2026, 7, 10).plusDays(i.toLong()),
+                whatType = "deals", whatId = deal.id, whoType = who?.let { "contacts" }, whoId = who?.id,
+                description = "Check in with the buyer and confirm next steps.",
+            ).also { it.owner = owner })
+            calls.save(Call(
+                subject = "Intro call — ${deal.name}",
+                callType = ref("call_type", "Outbound"),
+                startAt = now.plusHours(i.toLong()), durationMinutes = 15 + i * 5,
+                callPurpose = ref("call_purpose", "Prospecting"),
+                callResult = ref("call_result", "Interested"),
+                whatType = "deals", whatId = deal.id, whoType = who?.let { "contacts" }, whoId = who?.id,
+            ).also { it.owner = owner })
+            if (i < 2) {
+                meetings.save(Meeting(
+                    title = "Discovery — ${deal.name}",
+                    status = ref("meeting_status", "Planned"), location = "Video call",
+                    startAt = now.plusDays(i + 1L), endAt = now.plusDays(i + 1L).plusHours(1),
+                    whatType = "deals", whatId = deal.id, whoType = who?.let { "contacts" }, whoId = who?.id,
+                    description = "Walk through requirements and success criteria.",
+                ).also { it.owner = owner })
+                notes.save(Note(
+                    parentType = "deals", parentId = deal.id!!,
+                    body = "Client asked for a phased rollout starting Q3; budget sign-off expected soon.",
+                ).also { it.owner = owner })
+            }
         }
     }
 }

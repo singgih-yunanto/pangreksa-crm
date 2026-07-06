@@ -246,3 +246,255 @@ databaseChangeLog:
         - addForeignKeyConstraint: { constraintName: fk_deals_type, baseTableName: deals, baseColumnNames: type_id, referencedTableName: lookups, referencedColumnNames: id }
         - addForeignKeyConstraint: { constraintName: fk_deals_lead_source, baseTableName: deals, baseColumnNames: lead_source_id, referencedTableName: lookups, referencedColumnNames: id }
         - addForeignKeyConstraint: { constraintName: fk_deals_reason_for_loss, baseTableName: deals, baseColumnNames: reason_for_loss_id, referencedTableName: lookups, referencedColumnNames: id }
+
+  - changeSet:
+      id: 009-create-tasks
+      author: pangreksa
+      changes:
+        - createTable:
+            tableName: tasks
+            columns:
+              - column: { name: id, type: bigint, autoIncrement: true, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: created_at, type: timestamp, constraints: { nullable: false } }
+              - column: { name: updated_at, type: timestamp, constraints: { nullable: false } }
+              - column: { name: owner_id, type: bigint }
+              - column: { name: tag, type: varchar(255) }
+              - column: { name: locked, type: boolean, constraints: { nullable: false } }
+              - column: { name: custom_fields, type: jsonb }
+              - column: { name: subject, type: varchar(255), constraints: { nullable: false } }
+              - column: { name: status_id, type: bigint }
+              - column: { name: priority_id, type: bigint }
+              - column: { name: due_date, type: date }
+              - column: { name: who_type, type: varchar(32) }
+              - column: { name: who_id, type: bigint }
+              - column: { name: what_type, type: varchar(32) }
+              - column: { name: what_id, type: bigint }
+              - column: { name: description, type: text }
+        - addForeignKeyConstraint: { constraintName: fk_tasks_owner, baseTableName: tasks, baseColumnNames: owner_id, referencedTableName: users, referencedColumnNames: id }
+        - addForeignKeyConstraint: { constraintName: fk_tasks_status, baseTableName: tasks, baseColumnNames: status_id, referencedTableName: lookups, referencedColumnNames: id }
+        - addForeignKeyConstraint: { constraintName: fk_tasks_priority, baseTableName: tasks, baseColumnNames: priority_id, referencedTableName: lookups, referencedColumnNames: id }
+
+  - changeSet:
+      id: 010-create-meetings
+      author: pangreksa
+      changes:
+        - createTable:
+            tableName: meetings
+            columns:
+              - column: { name: id, type: bigint, autoIncrement: true, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: created_at, type: timestamp, constraints: { nullable: false } }
+              - column: { name: updated_at, type: timestamp, constraints: { nullable: false } }
+              - column: { name: owner_id, type: bigint }
+              - column: { name: tag, type: varchar(255) }
+              - column: { name: locked, type: boolean, constraints: { nullable: false } }
+              - column: { name: custom_fields, type: jsonb }
+              - column: { name: title, type: varchar(255), constraints: { nullable: false } }
+              - column: { name: status_id, type: bigint }
+              - column: { name: location, type: varchar(255) }
+              - column: { name: start_at, type: timestamp }
+              - column: { name: end_at, type: timestamp }
+              - column: { name: all_day, type: boolean, constraints: { nullable: false } }
+              - column: { name: who_type, type: varchar(32) }
+              - column: { name: who_id, type: bigint }
+              - column: { name: what_type, type: varchar(32) }
+              - column: { name: what_id, type: bigint }
+              - column: { name: description, type: text }
+        - addForeignKeyConstraint: { constraintName: fk_meetings_owner, baseTableName: meetings, baseColumnNames: owner_id, referencedTableName: users, referencedColumnNames: id }
+        - addForeignKeyConstraint: { constraintName: fk_meetings_status, baseTableName: meetings, baseColumnNames: status_id, referencedTableName: lookups, referencedColumnNames: id }
+
+  - changeSet:
+      id: 011-create-calls
+      author: pangreksa
+      changes:
+        - createTable:
+            tableName: calls
+            columns:
+              - column: { name: id, type: bigint, autoIncrement: true, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: created_at, type: timestamp, constraints: { nullable: false } }
+              - column: { name: updated_at, type: timestamp, constraints: { nullable: false } }
+              - column: { name: owner_id, type: bigint }
+              - column: { name: tag, type: varchar(255) }
+              - column: { name: locked, type: boolean, constraints: { nullable: false } }
+              - column: { name: custom_fields, type: jsonb }
+              - column: { name: subject, type: varchar(255), constraints: { nullable: false } }
+              - column: { name: call_type_id, type: bigint }
+              - column: { name: start_at, type: timestamp }
+              - column: { name: duration_minutes, type: int }
+              - column: { name: call_purpose_id, type: bigint }
+              - column: { name: call_result_id, type: bigint }
+              - column: { name: who_type, type: varchar(32) }
+              - column: { name: who_id, type: bigint }
+              - column: { name: what_type, type: varchar(32) }
+              - column: { name: what_id, type: bigint }
+              - column: { name: description, type: text }
+        - addForeignKeyConstraint: { constraintName: fk_calls_owner, baseTableName: calls, baseColumnNames: owner_id, referencedTableName: users, referencedColumnNames: id }
+        - addForeignKeyConstraint: { constraintName: fk_calls_type, baseTableName: calls, baseColumnNames: call_type_id, referencedTableName: lookups, referencedColumnNames: id }
+        - addForeignKeyConstraint: { constraintName: fk_calls_purpose, baseTableName: calls, baseColumnNames: call_purpose_id, referencedTableName: lookups, referencedColumnNames: id }
+        - addForeignKeyConstraint: { constraintName: fk_calls_result, baseTableName: calls, baseColumnNames: call_result_id, referencedTableName: lookups, referencedColumnNames: id }
+
+  - changeSet:
+      id: 012-create-audit-events
+      author: pangreksa
+      changes:
+        - createTable:
+            tableName: audit_events
+            columns:
+              - column: { name: id, type: bigint, autoIncrement: true, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: module, type: varchar(64), constraints: { nullable: false } }
+              - column: { name: record_id, type: bigint, constraints: { nullable: false } }
+              - column: { name: action, type: varchar(32), constraints: { nullable: false } }
+              - column: { name: actor_id, type: bigint }
+              - column: { name: actor_name, type: varchar(255) }
+              - column: { name: changes, type: jsonb }
+              - column: { name: at, type: timestamp, constraints: { nullable: false } }
+        - createIndex:
+            indexName: idx_audit_module_record
+            tableName: audit_events
+            columns:
+              - column: { name: module }
+              - column: { name: record_id }
+
+  - changeSet:
+      id: 013-create-notes
+      author: pangreksa
+      changes:
+        - createTable:
+            tableName: notes
+            columns:
+              - column: { name: id, type: bigint, autoIncrement: true, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: created_at, type: timestamp, constraints: { nullable: false } }
+              - column: { name: updated_at, type: timestamp, constraints: { nullable: false } }
+              - column: { name: owner_id, type: bigint }
+              - column: { name: parent_type, type: varchar(32), constraints: { nullable: false } }
+              - column: { name: parent_id, type: bigint, constraints: { nullable: false } }
+              - column: { name: body, type: text, constraints: { nullable: false } }
+        - addForeignKeyConstraint: { constraintName: fk_notes_owner, baseTableName: notes, baseColumnNames: owner_id, referencedTableName: users, referencedColumnNames: id }
+        - createIndex:
+            indexName: idx_notes_parent
+            tableName: notes
+            columns:
+              - column: { name: parent_type }
+              - column: { name: parent_id }
+
+  - changeSet:
+      id: 014-create-attachments
+      author: pangreksa
+      changes:
+        - createTable:
+            tableName: attachments
+            columns:
+              - column: { name: id, type: bigint, autoIncrement: true, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: created_at, type: timestamp, constraints: { nullable: false } }
+              - column: { name: updated_at, type: timestamp, constraints: { nullable: false } }
+              - column: { name: owner_id, type: bigint }
+              - column: { name: parent_type, type: varchar(32), constraints: { nullable: false } }
+              - column: { name: parent_id, type: bigint, constraints: { nullable: false } }
+              - column: { name: filename, type: varchar(500), constraints: { nullable: false } }
+              - column: { name: content_type, type: varchar(255) }
+              - column: { name: size_bytes, type: bigint, constraints: { nullable: false } }
+              - column: { name: storage_key, type: varchar(500), constraints: { nullable: false } }
+        - addForeignKeyConstraint: { constraintName: fk_attachments_owner, baseTableName: attachments, baseColumnNames: owner_id, referencedTableName: users, referencedColumnNames: id }
+        - createIndex:
+            indexName: idx_attachments_parent
+            tableName: attachments
+            columns:
+              - column: { name: parent_type }
+              - column: { name: parent_id }
+
+  - changeSet:
+      id: 015-leads-conversion-columns
+      author: pangreksa
+      changes:
+        - addColumn:
+            tableName: leads
+            columns:
+              - column: { name: converted, type: boolean, defaultValueBoolean: false, constraints: { nullable: false } }
+              - column: { name: converted_at, type: timestamp }
+              - column: { name: converted_account_id, type: bigint }
+              - column: { name: converted_contact_id, type: bigint }
+              - column: { name: converted_deal_id, type: bigint }
+        - addForeignKeyConstraint: { constraintName: fk_leads_conv_account, baseTableName: leads, baseColumnNames: converted_account_id, referencedTableName: accounts, referencedColumnNames: id }
+        - addForeignKeyConstraint: { constraintName: fk_leads_conv_contact, baseTableName: leads, baseColumnNames: converted_contact_id, referencedTableName: contacts, referencedColumnNames: id }
+        - addForeignKeyConstraint: { constraintName: fk_leads_conv_deal, baseTableName: leads, baseColumnNames: converted_deal_id, referencedTableName: deals, referencedColumnNames: id }
+
+  # ---- Idempotent data changesets: new activity picklists + role permission grants. ----
+  # These run on every environment; INSERT ... WHERE NOT EXISTS keeps them safe on already-seeded DBs.
+  # On a fresh install they run before the seeder creates roles, so the seeder's Permissions.ALL /
+  # MODULES grants cover new installs and these grants cover existing installs.
+  - changeSet:
+      id: 016-seed-activity-lookups
+      author: pangreksa
+      changes:
+        - sql:
+            splitStatements: false
+            stripComments: false
+            sql: |
+              INSERT INTO lookups (created_at, updated_at, category, code, label, sort_order, active, extra)
+              SELECT now(), now(), v.category, v.code, v.code, v.ord, true, v.extra::jsonb
+              FROM (VALUES
+                ('task_status','Not Started',0,'{}'),
+                ('task_status','In Progress',1,'{}'),
+                ('task_status','Waiting for input',2,'{}'),
+                ('task_status','Deferred',3,'{}'),
+                ('task_status','Completed',4,'{"closed": true}'),
+                ('task_priority','Highest',0,'{}'),
+                ('task_priority','High',1,'{}'),
+                ('task_priority','Normal',2,'{}'),
+                ('task_priority','Low',3,'{}'),
+                ('task_priority','Lowest',4,'{}'),
+                ('meeting_status','Planned',0,'{}'),
+                ('meeting_status','Held',1,'{"closed": true}'),
+                ('meeting_status','Cancelled',2,'{"closed": true}'),
+                ('call_type','Outbound',0,'{}'),
+                ('call_type','Inbound',1,'{}'),
+                ('call_type','Missed',2,'{}'),
+                ('call_purpose','Prospecting',0,'{}'),
+                ('call_purpose','Administrative',1,'{}'),
+                ('call_purpose','Negotiation',2,'{}'),
+                ('call_purpose','Demo',3,'{}'),
+                ('call_purpose','Project',4,'{}'),
+                ('call_purpose','Desk',5,'{}'),
+                ('call_result','Interested',0,'{}'),
+                ('call_result','Not interested',1,'{}'),
+                ('call_result','No response',2,'{}'),
+                ('call_result','Requested info',3,'{}'),
+                ('call_result','Call back later',4,'{}')
+              ) AS v(category, code, ord, extra)
+              WHERE NOT EXISTS (
+                SELECT 1 FROM lookups l WHERE l.category = v.category AND l.code = v.code
+              );
+
+  - changeSet:
+      id: 017-grant-activity-permissions
+      author: pangreksa
+      changes:
+        - sql:
+            splitStatements: false
+            stripComments: false
+            sql: |
+              -- Admin & Sales Manager: full CRUD on the new activity modules.
+              INSERT INTO role_permissions (role_id, permission)
+              SELECT r.id, p.permission
+              FROM roles r
+              CROSS JOIN (VALUES
+                ('TASK_VIEW'),('TASK_CREATE'),('TASK_EDIT'),('TASK_DELETE'),
+                ('MEETING_VIEW'),('MEETING_CREATE'),('MEETING_EDIT'),('MEETING_DELETE'),
+                ('CALL_VIEW'),('CALL_CREATE'),('CALL_EDIT'),('CALL_DELETE')
+              ) AS p(permission)
+              WHERE r.name IN ('Admin','Sales Manager')
+                AND NOT EXISTS (
+                  SELECT 1 FROM role_permissions rp WHERE rp.role_id = r.id AND rp.permission = p.permission
+                );
+              -- Sales Rep: view/create/edit only (no delete), matching the existing rep grant.
+              INSERT INTO role_permissions (role_id, permission)
+              SELECT r.id, p.permission
+              FROM roles r
+              CROSS JOIN (VALUES
+                ('TASK_VIEW'),('TASK_CREATE'),('TASK_EDIT'),
+                ('MEETING_VIEW'),('MEETING_CREATE'),('MEETING_EDIT'),
+                ('CALL_VIEW'),('CALL_CREATE'),('CALL_EDIT')
+              ) AS p(permission)
+              WHERE r.name = 'Sales Rep'
+                AND NOT EXISTS (
+                  SELECT 1 FROM role_permissions rp WHERE rp.role_id = r.id AND rp.permission = p.permission
+                );

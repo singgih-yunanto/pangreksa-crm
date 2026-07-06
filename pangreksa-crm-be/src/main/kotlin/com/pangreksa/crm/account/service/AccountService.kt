@@ -3,6 +3,7 @@ package com.pangreksa.crm.account.service
 import com.pangreksa.crm.account.domain.Account
 import com.pangreksa.crm.account.domain.AccountRepository
 import com.pangreksa.crm.account.web.AccountRequest
+import com.pangreksa.crm.audit.AuditService
 import com.pangreksa.crm.base.NotFoundException
 import com.pangreksa.crm.base.Page
 import com.pangreksa.crm.base.ValidationException
@@ -17,6 +18,7 @@ class AccountService(
     private val repository: AccountRepository,
     private val access: AccessService,
     private val lookups: LookupService,
+    private val audit: AuditService,
 ) {
     private val sortable = setOf("name", "annualRevenue", "createdAt", "updatedAt")
 
@@ -49,7 +51,9 @@ class AccountService(
         val a = Account(name = name)
         a.owner = access.currentUser()
         apply(a, req)
-        return repository.save(a)
+        val saved = repository.save(a)
+        audit.record("accounts", saved.id!!, "created", mapOf("name" to saved.name))
+        return saved
     }
 
     @Transactional
@@ -57,11 +61,17 @@ class AccountService(
         val a = get(id)
         req.name?.let { if (it.isBlank()) throw ValidationException("name", "Account name is required"); a.name = it.trim() }
         apply(a, req)
-        return repository.save(a)
+        val saved = repository.save(a)
+        audit.record("accounts", saved.id!!, "updated", mapOf("name" to saved.name))
+        return saved
     }
 
     @Transactional
-    fun delete(id: Long) { get(id); repository.deleteById(id) }
+    fun delete(id: Long) {
+        val a = get(id)
+        repository.deleteById(id)
+        audit.record("accounts", id, "deleted", mapOf("name" to a.name))
+    }
 
     private fun apply(a: Account, req: AccountRequest) {
         req.accountNumber?.let { a.accountNumber = it }

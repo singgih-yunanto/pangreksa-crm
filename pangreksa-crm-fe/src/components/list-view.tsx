@@ -18,6 +18,7 @@ function cell(row: any, col: ColumnDef) {
   if (col.key === "ownerName") return <span className="inline-flex items-center gap-2"><InitialChip name={v as string} size={22} />{v as string}</span>;
   if (col.type === "number") return <span className="tabular">{v ?? "—"}</span>;
   if (col.type === "date") return <span className="tabular">{v ?? "—"}</span>;
+  if (col.type === "datetime") return <span className="tabular">{v ? String(v).slice(0, 16).replace("T", " ") : "—"}</span>;
   return <span>{v == null || v === "" ? "—" : String(v)}</span>;
 }
 

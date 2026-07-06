@@ -1,6 +1,7 @@
 package com.pangreksa.crm.deal.service
 
 import com.pangreksa.crm.account.domain.AccountRepository
+import com.pangreksa.crm.audit.AuditService
 import com.pangreksa.crm.base.NotFoundException
 import com.pangreksa.crm.base.Page
 import com.pangreksa.crm.base.ValidationException
@@ -24,6 +25,7 @@ class DealService(
     private val contactRepository: ContactRepository,
     private val access: AccessService,
     private val lookups: LookupService,
+    private val audit: AuditService,
 ) {
     private val sortable = setOf("name", "amount", "closingDate", "createdAt", "updatedAt")
 
@@ -60,7 +62,9 @@ class DealService(
         d.stage = lookups.resolveById("deal_stage", req.stageId)
         apply(d, req)
         recompute(d)
-        return repository.save(d)
+        val saved = repository.save(d)
+        audit.record("deals", saved.id!!, "created", mapOf("name" to saved.name))
+        return saved
     }
 
     @Transactional
@@ -70,11 +74,17 @@ class DealService(
         req.stageId?.let { d.stage = lookups.resolveById("deal_stage", it) }
         apply(d, req)
         recompute(d)
-        return repository.save(d)
+        val saved = repository.save(d)
+        audit.record("deals", saved.id!!, "updated", mapOf("name" to saved.name))
+        return saved
     }
 
     @Transactional
-    fun delete(id: Long) { get(id); repository.deleteById(id) }
+    fun delete(id: Long) {
+        val d = get(id)
+        repository.deleteById(id)
+        audit.record("deals", id, "deleted", mapOf("name" to d.name))
+    }
 
     /** Probability comes from the stage lookup's `extra.probability`; expected = amount × prob / 100. */
     private fun recompute(d: Deal) {
