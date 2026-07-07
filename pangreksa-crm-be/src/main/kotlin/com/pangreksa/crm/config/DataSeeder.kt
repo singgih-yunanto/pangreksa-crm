@@ -141,9 +141,9 @@ class DataSeeder(
 
         // ---- Roles (hierarchy: Admin > Sales Manager > Sales Rep) ----
         val admin = roles.findByName("Admin") ?: error("Admin role missing — baseline not seeded")
-        val managerPerms = (Permissions.MODULES.flatMap { Permissions.crud(it) }).toMutableSet()
+        val managerPerms = (Permissions.MODULES.flatMap { Permissions.crud(it) } + Permissions.REPORT_VIEW).toMutableSet()
         val manager = roles.save(Role("Sales Manager", "Manages a sales team", admin, managerPerms))
-        val repPerms = Permissions.MODULES.flatMap { listOf("${it}_VIEW", "${it}_CREATE", "${it}_EDIT") }.toMutableSet()
+        val repPerms = (Permissions.MODULES.flatMap { listOf("${it}_VIEW", "${it}_CREATE", "${it}_EDIT") } + Permissions.REPORT_VIEW).toMutableSet()
         val rep = roles.save(Role("Sales Rep", "Owns their own records", manager, repPerms))
 
         // ---- Users ----

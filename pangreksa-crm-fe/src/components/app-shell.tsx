@@ -6,14 +6,14 @@ import { usePathname, useRouter } from "next/navigation";
 import { Command } from "cmdk";
 import {
   Handshake, UserPlus, Building2, Users, LayoutDashboard, Settings, Plus, Bell, Search, Sun, Moon, Shield,
-  LogOut, CheckSquare, CalendarDays, Phone, type LucideIcon,
+  LogOut, CheckSquare, CalendarDays, Phone, BarChart3, type LucideIcon,
 } from "lucide-react";
 import { MODULES, MODULE_ORDER } from "@/lib/modules";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/cn";
 import { Button, InitialChip } from "@/components/ui";
 
-const ICONS: Record<string, LucideIcon> = { Handshake, UserPlus, Building2, Users, LayoutDashboard, Settings, CheckSquare, CalendarDays, Phone };
+const ICONS: Record<string, LucideIcon> = { Handshake, UserPlus, Building2, Users, LayoutDashboard, Settings, CheckSquare, CalendarDays, Phone, BarChart3 };
 
 type NavItem = { key: string; href: string; label: string; icon: string };
 
@@ -23,6 +23,9 @@ function useNav(): NavItem[] {
   for (const k of MODULE_ORDER) {
     const m = MODULES[k];
     if (has(`${m.perm}_VIEW`)) items.push({ key: k, href: `/${k}`, label: m.plural, icon: m.icon });
+  }
+  if (has("REPORT_VIEW")) {
+    items.push({ key: "reports", href: "/reports", label: "Reports", icon: "BarChart3" });
   }
   if (has("ADMIN_USERS") || has("ADMIN_ROLES")) {
     items.push({ key: "settings", href: "/settings/users", label: "Settings", icon: "Settings" });

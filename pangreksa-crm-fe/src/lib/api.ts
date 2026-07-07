@@ -172,3 +172,39 @@ export async function convertLead(id: number | string, body: LeadConvertBody): P
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
   }))).json();
 }
+
+/* ----------------------------- Analytics ----------------------------- */
+export type AnalyticsFilter = { ownerId?: number | ""; from?: string; to?: string };
+export type Summary = {
+  pipelineValue: number; expectedRevenue: number; winRate: number;
+  openDeals: number; wonDeals: number; openLeads: number;
+};
+export type Bucket = { label: string; count: number; amount?: number | null };
+export type OwnerSales = { owner: string; count: number; total: number; won: number; open: number };
+export type LeadStats = { byStatus: Bucket[]; converted: number };
+export type ActivityStats = { tasks: number; meetings: number; calls: number; tasksByStatus: Bucket[] };
+
+function analyticsQs(f?: AnalyticsFilter): string {
+  const u = new URLSearchParams();
+  if (f?.ownerId) u.set("ownerId", String(f.ownerId));
+  if (f?.from) u.set("from", f.from);
+  if (f?.to) u.set("to", f.to);
+  const s = u.toString();
+  return s ? `?${s}` : "";
+}
+
+export async function fetchSummary(f?: AnalyticsFilter): Promise<Summary> {
+  return (await ok(await authedFetch(`/api/analytics/summary${analyticsQs(f)}`))).json();
+}
+export async function fetchPipelineByStage(f?: AnalyticsFilter): Promise<Bucket[]> {
+  return (await ok(await authedFetch(`/api/analytics/pipeline-by-stage${analyticsQs(f)}`))).json();
+}
+export async function fetchSalesByOwner(f?: AnalyticsFilter): Promise<OwnerSales[]> {
+  return (await ok(await authedFetch(`/api/analytics/sales-by-owner${analyticsQs(f)}`))).json();
+}
+export async function fetchLeadsByStatus(f?: AnalyticsFilter): Promise<LeadStats> {
+  return (await ok(await authedFetch(`/api/analytics/leads-by-status${analyticsQs(f)}`))).json();
+}
+export async function fetchActivityStats(f?: AnalyticsFilter): Promise<ActivityStats> {
+  return (await ok(await authedFetch(`/api/analytics/activities${analyticsQs(f)}`))).json();
+}
